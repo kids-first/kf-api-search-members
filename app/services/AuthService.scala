@@ -14,8 +14,8 @@ class AuthService @Inject()(config: Configuration) {
   implicit val clock: Clock = Clock.systemUTC
 
   def validateJwt(token: String): Try[JwtClaim] = for {
-      claims <- JwtJson.decode(token, AuthService.key, Seq(JwtAlgorithm.RS256)) // Decode the token using the secret key
-      _ <- validateClaims(claims)     // validate the data stored inside the token
+      claims <- JwtJson.decode(token, AuthService.key, Seq(JwtAlgorithm.RS256))
+      _ <- validateClaims(claims)
     } yield claims
 
   private val validateClaims = (claims: JwtClaim) =>
@@ -29,7 +29,7 @@ class AuthService @Inject()(config: Configuration) {
 object AuthService {
   import Control._
 
-  private val key = using(Source.fromURL("https://ego-qa.kidsfirstdrc.org/oauth/token/public_key")) { source => source.mkString}
+  private final val key = using(Source.fromURL("https://ego-qa.kidsfirstdrc.org/oauth/token/public_key")) { source => source.mkString}
 }
 
 object Control {
