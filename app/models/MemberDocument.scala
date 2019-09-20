@@ -7,10 +7,10 @@ import play.api.libs.functional.syntax._
 case class MemberDocument(
                    firstName: String,
                    lastName: String,
-                   email: String,
+                   email: Option[String],
 //                   institutionalEmail: Option[String],
 //                   acceptedTerms: Boolean = false,
-                   isPublic: Boolean,
+                   isPublic: Option[Boolean],
 //                   roles: List[String] = Nil,
 //                   title: Option[String],
 //                   jobTitle: Option[String],
@@ -28,22 +28,22 @@ case class MemberDocument(
 object MemberDocument {
 
   implicit val memberDocumentReads: Reads[MemberDocument] = (
-    (JsPath \ "firstName").read[String] and
-      (JsPath \ "lastName").read[String] and
-      (JsPath \ "email").read[String] and
-      (JsPath \ "isPublic").read[Boolean] and
-      (JsPath \ "institution").readNullable[String] and
-      (JsPath \ "city").readNullable[String] and
-      (JsPath \ "state").readNullable[String] and
-      (JsPath \ "country").readNullable[String] and
-      (JsPath \ "interests").read[List[String]]
+    (JsPath \\"firstName").read[String] and
+      (JsPath \\ "lastName").read[String] and
+      (JsPath \\ "email").readNullable[String] and
+      (JsPath \\ "isPublic").readNullable[Boolean] and
+      (JsPath \\ "institution").readNullable[String] and
+      (JsPath \\ "city").readNullable[String] and
+      (JsPath \\ "state").readNullable[String] and
+      (JsPath \\ "country").readNullable[String] and
+      (JsPath \\ "interests").read[List[String]]
     )(MemberDocument.apply _)
 
   implicit val memberDocumentWrites: Writes[MemberDocument] = (
     (JsPath \ "firstName").write[String] and
       (JsPath \ "lastName").write[String] and
-      (JsPath \ "email").write[String] and
-      (JsPath \ "isPublic").write[Boolean] and
+      (JsPath \ "email").writeNullable[String] and
+      (JsPath \ "isPublic").writeNullable[Boolean] and
       (JsPath \ "institution").writeNullable[String] and
       (JsPath \ "city").writeNullable[String] and
       (JsPath \ "state").writeNullable[String] and

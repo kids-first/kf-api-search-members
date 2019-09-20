@@ -28,18 +28,18 @@ class ESQueryService @Inject()(configuration: Configuration) {
     import com.sksamuel.elastic4s.http.ElasticDsl._
 
     val queriesShould: Seq[QueryDefinition] = Seq(
-      wildcardQuery("interests", s"*${qf.queryString}*"),
-      matchPhrasePrefixQuery("firstName", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("lastName", s"${qf.queryString}").boost(2),
-      matchPhrasePrefixQuery("institution", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("city", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("state", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("country", s"${qf.queryString}"),
-      wildcardQuery("email", s"*${qf.queryString}*")
+      wildcardQuery("doc.interests", s"*${qf.queryString}*"),
+      matchPhrasePrefixQuery("doc.firstName", s"${qf.queryString}"),
+      matchPhrasePrefixQuery("doc.lastName", s"${qf.queryString}").boost(2),
+      matchPhrasePrefixQuery("doc.institution", s"${qf.queryString}"),
+      matchPhrasePrefixQuery("doc.city", s"${qf.queryString}"),
+      matchPhrasePrefixQuery("doc.state", s"${qf.queryString}"),
+      matchPhrasePrefixQuery("doc.country", s"${qf.queryString}"),
+      wildcardQuery("doc.email", s"*${qf.queryString}*")
     )
 
     val resp = client.execute {
-      search("members")
+      search("member")
         .from(qf.start)
         .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
         .sortByFieldDesc("_score")
@@ -49,7 +49,6 @@ class ESQueryService @Inject()(configuration: Configuration) {
           )
         }
     }
-
     resp
   }
   sys.addShutdownHook(client.close())
