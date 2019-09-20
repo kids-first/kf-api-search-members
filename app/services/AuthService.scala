@@ -10,11 +10,12 @@ import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 class AuthService @Inject()(config: Configuration) {
+  import Control._
 
   implicit val clock: Clock = Clock.systemUTC
 
   def validateJwt(token: String): Try[JwtClaim] = for {
-      claims <- JwtJson.decode(token, AuthService.key, Seq(JwtAlgorithm.RS256))
+      claims <- JwtJson.decode(token, key(config.get[String]("play.public_key.path")), Seq(JwtAlgorithm.RS256))
       _ <- validateClaims(claims)
     } yield claims
 
@@ -24,12 +25,8 @@ class AuthService @Inject()(config: Configuration) {
     } else {
       Failure(new Exception("The JWT did not pass validation"))
     }
-}
 
-object AuthService {
-  import Control._
-
-  private final val key = using(Source.fromURL("https://ego-qa.kidsfirstdrc.org/oauth/token/public_key")) { source => source.mkString}
+  private val key = (path: String) => using(Source.fromURL(path)) { source => source.mkString}
 }
 
 object Control {
