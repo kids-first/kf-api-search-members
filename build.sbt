@@ -1,4 +1,4 @@
-name := """kf-search"""
+name := """kf-search-members"""
 organization := "com.example"
 
 version := "1.0-SNAPSHOT"

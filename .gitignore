@@ -3,9 +3,9 @@ target
 /.idea
 /.idea_modules
 /.classpath
-/.project
-/project
-/public
+.project
+project/target
+public
 /.settings
 /.g8
 /RUNNING_PID
