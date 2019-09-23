@@ -12,11 +12,16 @@ val elastic4sVersion = "6.1.4"
 libraryDependencies += guice
 
 libraryDependencies ++= Seq(
+  "org.scalactic" %% "scalactic" % "3.0.8",
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+
   "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3" % Test,
 
   "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
 
   "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion,
+
+  "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion,
   "com.auth0" % "jwks-rsa" % "0.8.3",
   "com.pauldijou" %% "jwt-play" % "4.0.0",
   "com.pauldijou" %% "jwt-core" % "4.0.0"

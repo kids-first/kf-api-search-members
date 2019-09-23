@@ -10,7 +10,7 @@ case class MemberDocument(
                    email: Option[String],
 //                   institutionalEmail: Option[String],
 //                   acceptedTerms: Boolean = false,
-                   isPublic: Option[Boolean],
+                   isPublic: Boolean,
 //                   roles: List[String] = Nil,
 //                   title: Option[String],
 //                   jobTitle: Option[String],
@@ -31,7 +31,7 @@ object MemberDocument {
     (JsPath \\"firstName").read[String] and
       (JsPath \\ "lastName").read[String] and
       (JsPath \\ "email").readNullable[String] and
-      (JsPath \\ "isPublic").readNullable[Boolean] and
+      (JsPath \\ "isPublic").readNullable[Boolean].map(_.getOrElse(false)) and
       (JsPath \\ "institution").readNullable[String] and
       (JsPath \\ "city").readNullable[String] and
       (JsPath \\ "state").readNullable[String] and
@@ -43,7 +43,7 @@ object MemberDocument {
     (JsPath \ "firstName").write[String] and
       (JsPath \ "lastName").write[String] and
       (JsPath \ "email").writeNullable[String] and
-      (JsPath \ "isPublic").writeNullable[Boolean] and
+      (JsPath \ "isPublic").write[Boolean] and
       (JsPath \ "institution").writeNullable[String] and
       (JsPath \ "city").writeNullable[String] and
       (JsPath \ "state").writeNullable[String] and
