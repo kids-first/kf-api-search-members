@@ -11,35 +11,35 @@ import play.api.test._
 
 import scala.util.Try
 
-class ESQueryServiceSpec extends FreeSpec with Matchers with DockerTests with BeforeAndAfterAll with MockitoSugar  {
+//class ESQueryServiceSpec extends FreeSpec with Matchers with DockerTests with BeforeAndAfterAll with MockitoSugar  {
 
-  val m = mock[Turtle]
+//  val m = mock[Turtle]
+//
+//  override protected def beforeAll(): Unit = {
+//    Try {
+//      client.execute {
+//        deleteIndex("collapse")
+//      }.await
+//    }
+//
+//    client.execute {
+//      createIndex("collapse") mappings {
+//        mapping() fields(
+//          keywordField("name"),
+//          keywordField("board")
+//        )
+//      }
+//    }.await
+//
+//    client.execute {
+//      bulk(
+//        indexInto("collapse") id "1" fields("name" -> "Ibiza Playa", "board" -> "AI"),
+//        indexInto("collapse") id "2" fields("name" -> "Ibiza Playa", "board" -> "BB"),
+//
+//        indexInto("collapse") id "3" fields("name" -> "Best Tenerife", "board" -> "AI")
+//      ).refresh(RefreshPolicy.Immediate)
+//    }.await
+//  }
 
-  override protected def beforeAll(): Unit = {
-    Try {
-      client.execute {
-        deleteIndex("collapse")
-      }.await
-    }
 
-    client.execute {
-      createIndex("collapse") mappings {
-        mapping() fields(
-          keywordField("name"),
-          keywordField("board")
-        )
-      }
-    }.await
-
-    client.execute {
-      bulk(
-        indexInto("collapse") id "1" fields("name" -> "Ibiza Playa", "board" -> "AI"),
-        indexInto("collapse") id "2" fields("name" -> "Ibiza Playa", "board" -> "BB"),
-
-        indexInto("collapse") id "3" fields("name" -> "Best Tenerife", "board" -> "AI")
-      ).refresh(RefreshPolicy.Immediate)
-    }.await
-  }
-
-
-}
+//}
