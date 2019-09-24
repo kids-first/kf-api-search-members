@@ -3,7 +3,7 @@ package controllers
 import javax.inject._
 import models.{MemberDocument, QueryFilter}
 import play.api.Logging
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import play.api.routing.sird._
 import services.{AuthAction, ESQueryService}
@@ -15,6 +15,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQueryService, authAction: AuthAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
   def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
+
+    type HighLights = Map[String, Map[String, Seq[String]]]
 
     val qs: QueryString = request.queryString
 
@@ -34,10 +36,23 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
         esQueryService.generateFilterQueries(qf) map  {
           case Right(reqSuccess) =>
             logger.info(s"ElasticSearch: RequestSuccesss with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
-            Ok(Json.toJson(reqSuccess.result.hits.hits.map(sh => (Json.parse(sh.sourceAsString).as[MemberDocument], Map("highlight"-> sh.highlight))).toSeq))
+
+            val hits = reqSuccess.result.hits.hits
+
+            val publicMembers: Seq[(MemberDocument, HighLights)] = hits.map(sh => (
+              Json.parse(sh.sourceAsString).as[MemberDocument],
+              Map("highlight"-> sh.highlight)
+            )).filter(_._1.isPublic).toSeq
+
+            val result = new JsObject(
+              Map(
+                "totalMemberCount" -> Json.toJson(hits.length),
+                "publicMembers" -> Json.toJson(publicMembers)
+              ))
+            Ok(result)
           case Left(_) =>
             logger.error("ElasticSearch: RequestFailure was returned")
-            BadRequest("")
+            BadRequest("ElasticSearch request failed")
         }
       case None => Future.successful(BadRequest("Invalid input query string"))
     }
