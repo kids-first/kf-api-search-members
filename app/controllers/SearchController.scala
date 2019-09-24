@@ -37,16 +37,14 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
           case Right(reqSuccess) =>
             logger.info(s"ElasticSearch: RequestSuccesss with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
 
-            val hits = reqSuccess.result.hits.hits
-
-            val publicMembers: Seq[(MemberDocument, HighLights)] = hits.map(sh => (
+            val publicMembers: Seq[(MemberDocument, HighLights)] = reqSuccess.result.hits.hits.map(sh => (
               Json.parse(sh.sourceAsString).as[MemberDocument],
               Map("highlight"-> sh.highlight)
             )).filter(_._1.isPublic).toSeq
 
             val result = new JsObject(
               Map(
-                "totalMemberCount" -> Json.toJson(hits.length),
+                "totalMemberCount" -> Json.toJson(reqSuccess.result.totalHits),
                 "publicMembers" -> Json.toJson(publicMembers)
               ))
             Ok(result)
