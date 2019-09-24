@@ -4,6 +4,7 @@ import com.sksamuel.elastic4s.ElasticsearchClientUri
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
 import com.sksamuel.elastic4s.searches.queries.QueryDefinition
+import com.sksamuel.elastic4s.searches.sort.FieldSortDefinition
 import javax.inject.{Inject, Singleton}
 import models.QueryFilter
 import play.api.Configuration
@@ -42,7 +43,7 @@ class ESQueryService @Inject()(configuration: Configuration) {
       search("member")
         .from(qf.start)
         .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
-        .sortByFieldDesc("_score")
+        .sortBy(FieldSortDefinition("_score"), FieldSortDefinition("doc.lastName.keyword"))
         .bool{
           should(
             queriesShould
