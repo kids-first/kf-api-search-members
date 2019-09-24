@@ -48,6 +48,15 @@ class ESQueryService @Inject()(configuration: Configuration) {
             queriesShould
           )
         }
+        .highlighting(
+          highlight("doc.interests"),
+          highlight("doc.firstName"),
+          highlight("doc.lastName"),
+          highlight("doc.institution"),
+          highlight("doc.city"),
+          highlight("doc.state"),
+          highlight("doc.country"),
+          highlight("doc.email"))
     }
     resp
   }

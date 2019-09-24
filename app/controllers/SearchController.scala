@@ -34,7 +34,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
         esQueryService.generateFilterQueries(qf) map  {
           case Right(reqSuccess) =>
             logger.info(s"ElasticSearch: RequestSuccesss with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
-            Ok(Json.toJson( reqSuccess.result.hits.hits.map(sh => Json.parse(sh.sourceAsString).as[MemberDocument]).toSeq))
+            Ok(Json.toJson(reqSuccess.result.hits.hits.map(sh => (Json.parse(sh.sourceAsString).as[MemberDocument], Map("highlight"-> sh.highlight))).toSeq))
           case Left(_) =>
             logger.error("ElasticSearch: RequestFailure was returned")
             BadRequest("")
