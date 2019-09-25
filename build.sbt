@@ -24,7 +24,10 @@ libraryDependencies ++= Seq(
   "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion %Test,
   "com.auth0" % "jwks-rsa" % "0.8.3",
   "com.pauldijou" %% "jwt-play" % "4.0.0",
-  "com.pauldijou" %% "jwt-core" % "4.0.0"
+  "com.pauldijou" %% "jwt-core" % "4.0.0",
+  "org.mockito" % "mockito-all" % "1.10.19" % Test,
+
+  "com.dimafeng" %% "testcontainers-scala" % "0.31.0" % Test
 )
 
 mainClass in assembly := Some("play.core.server.ProdServerStart")
