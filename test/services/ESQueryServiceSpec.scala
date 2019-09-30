@@ -4,6 +4,7 @@ import java.net.URL
 
 import com.dimafeng.testcontainers.GenericContainer
 import com.sksamuel.elastic4s.http.HttpClient
+import com.sksamuel.elastic4s.http.search.SearchHit
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
 import com.sksamuel.elastic4s.{ElasticsearchClientUri, Index, Indexable, RefreshPolicy}
@@ -17,7 +18,7 @@ import play.api.test.StubControllerComponentsFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with BeforeAndAfterAll with StubControllerComponentsFactory with MockitoSugar {
 
@@ -75,16 +76,14 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
 
       dockerclient.execute(
         bulk(
-          indexRequest("1", MemberDocument("Adrian", "PaulC", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("2", MemberDocument("Adrian", "PaulA", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("3", MemberDocument("AdrianC", "PaulB", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("4", MemberDocument("Paul", "Adrian", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, List("cancer", "pandas")))
+          indexRequest("1", MemberDocument("John", "DoeC", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("2", MemberDocument("John", "DoeA", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("3", MemberDocument("JohnC", "DoeB", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("4", MemberDocument("Doe", "John", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, List("cancer", "pandas")))
         ).refresh(RefreshPolicy.Immediate)
       ).await
-    } match {
-      case Success(value) => println("SUCCESS")
-      case Failure(e) => println(e.toString)
     }
+
     configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> List(container.mappedPort(9200)))
 
     esQueryService = new ESQueryService(configuration)
@@ -97,8 +96,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
   private val IndexName = "member"
 
 
-  implicit val MemberIndexable: Indexable[MemberDocument] =
-    (t: MemberDocument) => s"""{ "firstName" : "${t.firstName}", "lastName" : "${t.lastName}", "email" : "${t.email.orNull}", "isPublic" : "${t.isPublic}", "city" : "${t.city.orNull}", "state" : "${t.state.orNull}", "country" : "${t.country.orNull}" }"""
+  implicit val MemberIndexable: Indexable[MemberDocument] = (t: MemberDocument) =>  Json.toJson(t).toString()
 
 
   def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)
@@ -110,35 +108,18 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
         .openConnection()
         .getInputStream)
       .mkString should include("\"number\" : \"6.1.4\"")
-
-    println(Source.fromInputStream(
-      new URL(
-        s"http://${container.containerIpAddress}:${container.mappedPort(9200)}/$IndexName/_mapping")
-        .openConnection()
-        .getInputStream)
-      .mkString)
-
-
-    println(Source.fromInputStream(
-      new URL(
-        s"http://${container.containerIpAddress}:${container.mappedPort(9200)}/$IndexName/_search?q=*")
-        .openConnection()
-        .getInputStream)
-      .mkString)
   }
 
   "ESQueryService" should "order documents by score" in {
-      val result = esQueryService.generateFilterQueries(new QueryFilter("Adrian", 0, 10)).await.right.get.result.hits.hits.map(r => r.score).toSeq
+      val result = esQueryService.generateFilterQueries(new QueryFilter("John", 0, 10)).await.right.get.result.hits.hits.map(r => r.score).toSeq
     result shouldBe result.sorted(Ordering.Float.reverse)
   }
 
-  "ESQueryService" should "order documents by lastName for same score" in {
-    esQueryService.generateFilterQueries(new QueryFilter("Adrian", 0, 10)).await.right.get.result.hits.hits.foreach(r => println(r.sourceAsString, r.score))
+  it should "order documents by lastName for same score" in {
+    val hitResultsByScore = esQueryService.generateFilterQueries(new QueryFilter("John", 0, 10)).await.right.get.result.hits.hits.toSeq.groupBy(_.score).values.toSeq
 
-    println(esQueryService.generateFilterQueries(new QueryFilter("Adrian", 0, 10)).await.right.get.result.hits.hits.foreach(r => println(r.sourceAsString, r.score)))
-    val result = esQueryService.generateFilterQueries(new QueryFilter("Adrian", 0, 10)).await.right.get.result.hits.hits.toSeq.groupBy(_.score).values.toSeq.map(sq =>
-      sq.map(s => Json.parse(s.sourceAsString))
-    )
-    "one" shouldBe "one" //FIXME
+    val searchHitLastNames =  hitResultsByScore.map(_.map(s => Json.parse(s.sourceAsString).as[MemberDocument].lastName))
+
+    searchHitLastNames.foreach(l =>  l shouldBe l.sorted(Ordering.String))
   }
 }
