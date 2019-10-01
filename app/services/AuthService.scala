@@ -15,7 +15,7 @@ class AuthService @Inject()(config: Configuration) {
   implicit val clock: Clock = Clock.systemUTC
 
   def validateJwt(token: String): Try[JwtClaim] = for {
-      claims <- JwtJson.decode(token, key(config.get[String]("play.public_key.path")), Seq(JwtAlgorithm.RS256))
+      claims <- JwtJson.decode(token, key(config.get[String]("jwt.public_key.url")), Seq(JwtAlgorithm.RS256))
       _ <- validateClaims(claims)
     } yield claims
 
