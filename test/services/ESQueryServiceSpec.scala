@@ -83,7 +83,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
       ).await
     }
 
-    configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> 9200)
+    configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> List(9200))
 
     esQueryService = new ESQueryService(configuration)
   }
