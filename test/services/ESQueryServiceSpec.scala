@@ -4,14 +4,12 @@ import java.net.URL
 
 import com.dimafeng.testcontainers.GenericContainer
 import com.sksamuel.elastic4s.http.HttpClient
-import com.sksamuel.elastic4s.http.search.SearchHit
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
 import com.sksamuel.elastic4s.{ElasticsearchClientUri, Index, Indexable, RefreshPolicy}
 import models.{MemberDocument, QueryFilter}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.testcontainers.containers.wait.strategy.Wait
 import play.api.Configuration
 import play.api.libs.json.Json
 import play.api.test.StubControllerComponentsFactory
@@ -27,28 +25,29 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
   var esQueryService: ESQueryService = _
 
   override def beforeAll(): Unit = {
-    container = GenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.1.4",
-      exposedPorts = Seq(9200),
-      waitStrategy = Wait.forHttp("/"),
-      env = Map("discovery.type" -> "single-node", "cluster.name"->"elasticsearch")
-    )
+//    container = GenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.1.4",
+//      exposedPorts = Seq(9200),
+//      waitStrategy = Wait.forHttp("/"),
+//      env = Map("discovery.type" -> "single-node", "cluster.name"->"elasticsearch")
+//    )
 
-    container.start()
+//    container.start()
 
-    val elasticsearchClientUri = new ElasticsearchClientUri(
-      s"elasticsearch://${container.mappedPort(9200)}",
-      List(("localhost", container.mappedPort(9200))),
-      Map("ssl" -> "false")
-    )
+//    val elasticsearchClientUri = new ElasticsearchClientUri(
+//      s"elasticsearch://${container.mappedPort(9200)}",
+//      List(("localhost", container.mappedPort(9200))),
+//      Map("ssl" -> "false")
+//    )
 
-    val dockerclient = HttpClient(elasticsearchClientUri)
+    val elasticsearchClientUri =  ElasticsearchClientUri("localhost", 9200)
+    val esClient = HttpClient(elasticsearchClientUri)
 
     Try {
-      dockerclient.execute {
+      esClient.execute {
         deleteIndex(IndexName)
       }.await
 
-      dockerclient.execute {
+      esClient.execute {
         createIndex(IndexName).mappings(
           mapping(IndexName)
             .fields(
@@ -74,7 +73,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
         )
       }.await
 
-      dockerclient.execute(
+      esClient.execute(
         bulk(
           indexRequest("1", MemberDocument("John", "DoeC", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
           indexRequest("2", MemberDocument("John", "DoeA", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
@@ -89,9 +88,9 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
     esQueryService = new ESQueryService(configuration)
   }
 
-  override def afterAll(): Unit = {
-    container.close()
-  }
+//  override def afterAll(): Unit = {
+//    container.close()
+//  }
 
   private val IndexName = "member"
 
