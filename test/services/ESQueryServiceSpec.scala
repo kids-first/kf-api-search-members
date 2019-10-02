@@ -83,7 +83,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
       ).await
     }
 
-    configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> List(container.mappedPort(9200)))
+    configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> 9200)
 
     esQueryService = new ESQueryService(configuration)
   }
@@ -103,7 +103,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
   "GenericContainer" should "start ES and expose 9200 port" in {
     Source.fromInputStream(
       new URL(
-        s"http://${container.containerIpAddress}:${container.mappedPort(9200)}")
+        s"http://localhost:9200")
         .openConnection()
         .getInputStream)
       .mkString should include("\"number\" : \"6.1.4\"")
