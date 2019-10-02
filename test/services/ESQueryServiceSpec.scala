@@ -7,21 +7,16 @@ import com.sksamuel.elastic4s.http.HttpClient
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
 import com.sksamuel.elastic4s.{ElasticsearchClientUri, Index, Indexable, RefreshPolicy}
-import com.sksamuel.elastic4s.mappings.FieldType._
-import controllers.SearchController
 import models.{MemberDocument, QueryFilter}
-import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.testcontainers.containers.wait.strategy.Wait
-import pdi.jwt.JwtClaim
 import play.api.Configuration
-import play.api.mvc.BodyParsers
+import play.api.libs.json.Json
 import play.api.test.StubControllerComponentsFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with BeforeAndAfterAll with StubControllerComponentsFactory with MockitoSugar {
 
@@ -30,104 +25,77 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
   var esQueryService: ESQueryService = _
 
   override def beforeAll(): Unit = {
-    container = GenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.1.4",
-      exposedPorts = Seq(9200),
-      waitStrategy = Wait.forHttp("/"),
-      env = Map("discovery.type" -> "single-node", "cluster.name"->"elasticsearch")
-    )
+//    container = GenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.1.4",
+//      exposedPorts = Seq(9200),
+//      waitStrategy = Wait.forHttp("/"),
+//      env = Map("discovery.type" -> "single-node", "cluster.name"->"elasticsearch")
+//    )
 
-    container.start()
+//    container.start()
 
-    val elasticsearchClientUri = new ElasticsearchClientUri(
-      s"elasticsearch://${container.mappedPort(9200)}",
-      List(("localhost", container.mappedPort(9200))),
-      Map("ssl" -> "false")
-    )
+//    val elasticsearchClientUri = new ElasticsearchClientUri(
+//      s"elasticsearch://${container.mappedPort(9200)}",
+//      List(("localhost", container.mappedPort(9200))),
+//      Map("ssl" -> "false")
+//    )
 
-    val dockerclient = HttpClient(elasticsearchClientUri)
+    val elasticsearchClientUri =  ElasticsearchClientUri("localhost", 9200)
+    val esClient = HttpClient(elasticsearchClientUri)
 
     Try {
-      dockerclient.execute {
+      esClient.execute {
         deleteIndex(IndexName)
       }.await
 
-//      dockerclient.execute {
-//        createIndex(IndexName).mappings(
-//          mapping(IndexName)
-//            .fields(
-//              textField("firstName"),
-//              keywordField("lastName"),
-//              textField("email"),
-//              textField("institutionalEmail"),
-//              booleanField("acceptedTerms"),
-//              booleanField("isPublic"),
-//              //        textField("doc.Roles"), FIXME
-//              textField("title"),
-//              textField("jobTitle"),
-//              textField("institution"),
-//              textField("city"),
-//              textField("state"),
-//              textField("country"),
-//              textField("eraCommonsID"),
-//              textField("bio"),
-//              textField("country"),
-//              textField("story")
-//              //        textField("doc.interests"), FIXME
-//              //        textField("doc.virtualStudies") FIXME
-//            )
-//        )
-//      }.await
-      dockerclient.execute {
+      esClient.execute {
         createIndex(IndexName).mappings(
           mapping(IndexName)
             .fields(
-              textField("firstName"),
-              keywordField("lastName"),
-              textField("email"),
+              textField("firstName").fields(keywordField("raw")),
+              textField("lastName").fields(keywordField("raw")),
+              keywordField("email"),
               textField("institutionalEmail"),
-              booleanField("acceptedTerms"),
+              keywordField("acceptedTerms"),
               booleanField("isPublic"),
               //        textField("doc.Roles"), FIXME
-              textField("title"),
-              textField("jobTitle"),
-              textField("institution"),
-              textField("city"),
-              textField("state"),
-              textField("country"),
-              textField("eraCommonsID"),
+              keywordField("title"),
+              textField("jobTitle").fields(keywordField("raw")),
+              textField("institution").fields(keywordField("raw")),
+              textField("city").fields(keywordField("raw")),
+              textField("state").fields(keywordField("raw")),
+              textField("country").fields(keywordField("raw")),
+              keywordField("eraCommonsID"),
               textField("bio"),
-              textField("country"),
-              textField("story")
-              //        textField("doc.interests"), FIXME
+              textField("story"),
+              textField("interests").fields(keywordField("raw"))
               //        textField("doc.virtualStudies") FIXME
             )
         )
       }.await
 
-      dockerclient.execute(
+      esClient.execute(
         bulk(
-          indexRequest("1", MemberDocument("Adrian", "PaulA", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("2", MemberDocument("Adrian", "PaulB", Some("adiemail@gmail.com"), isPublic = true, None, None, None, None, Nil))
+          indexRequest("1", MemberDocument("John", "DoeC", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("2", MemberDocument("John", "DoeA", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("3", MemberDocument("JohnC", "DoeB", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
+          indexRequest("4", MemberDocument("Doe", "John", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, List("cancer", "pandas")))
         ).refresh(RefreshPolicy.Immediate)
       ).await
-    } match {
-      case Success(value) => println("SUCCESS")
-      case Failure(e) => println(e.toString)
     }
+
     configuration = Configuration.apply("elasticsearch.host"-> "localhost", "elasticsearch.ports" -> List(container.mappedPort(9200)))
 
     esQueryService = new ESQueryService(configuration)
   }
 
-  override def afterAll(): Unit = {
-    container.close()
-  }
+//  override def afterAll(): Unit = {
+//    container.close()
+//  }
 
   private val IndexName = "member"
 
 
-  implicit val MemberIndexable: Indexable[MemberDocument] =
-    (t: MemberDocument) => s"""{ "firstName" : "${t.firstName}", "lastName" : "${t.lastName}", "email" : "${t.email}", "isPublic" : "${t.isPublic}", "city" : "${t.city}", "state" : "${t.state}", "country" : "${t.country}" }"""
+  implicit val MemberIndexable: Indexable[MemberDocument] = (t: MemberDocument) =>  Json.toJson(t).toString()
 
 
   def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)
@@ -141,14 +109,16 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
       .mkString should include("\"number\" : \"6.1.4\"")
   }
 
-  "ESQueryServiceSpec" should "order documents by score" in {
-    println(Source.fromInputStream(
-      new URL(
-        s"http://${container.containerIpAddress}:${container.mappedPort(9200)}/${IndexName}/_search?q=*")
-        .openConnection()
-        .getInputStream).mkString
-    )
-//    println(esQueryService.generateFilterQueries(new QueryFilter("Adrian", 1, 10)).await)
-    "one" shouldBe("one")
+  "ESQueryService" should "order documents by score" in {
+      val result = esQueryService.generateFilterQueries(new QueryFilter("John", 0, 10)).await.right.get.result.hits.hits.map(r => r.score).toSeq
+    result shouldBe result.sorted(Ordering.Float.reverse)
+  }
+
+  it should "order documents by lastName for same score" in {
+    val hitResultsByScore = esQueryService.generateFilterQueries(new QueryFilter("John", 0, 10)).await.right.get.result.hits.hits.toSeq.groupBy(_.score).values.toSeq
+
+    val searchHitLastNames =  hitResultsByScore.map(_.map(s => Json.parse(s.sourceAsString).as[MemberDocument].lastName))
+
+    searchHitLastNames.foreach(l =>  l shouldBe l.sorted(Ordering.String))
   }
 }
