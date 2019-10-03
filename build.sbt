@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
 
   "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion exclude("commons-logging", "commons-logging"),
 
-  "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion %Test,
+  "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion %Test exclude("commons-logging", "commons-logging"),
   "com.auth0" % "jwks-rsa" % "0.8.3",
   "com.pauldijou" %% "jwt-play" % "4.0.0",
   "com.pauldijou" %% "jwt-core" % "4.0.0",
