@@ -8,9 +8,11 @@ This service requires a REST API query request of the form:
 ```
 /searchmembers?queryString=mytext&start=0&end=50
 ```
-It requires two environment variables :
-- elasticsearch.host : Elastic Search cluster Host
-- elasticsearch.ports : Elastic Search cluster Port List
+These environment variables can be used to override default configuration:
+- ES_HOST : Elastic Search cluster Host
+- ES_PORTS : Elastic Search cluster Port List (ex. : ES_PORTS.0=9200, ES_PORTS.1=9300 )
+- JWT_PUBLIC_KEY_URL : URL of the public key used to decrypt JWT token
+- APPLICATION_SECRET : secret of the play application 
 
 ## Build
 
