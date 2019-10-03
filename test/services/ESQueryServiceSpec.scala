@@ -1,6 +1,5 @@
 package services
 
-import com.dimafeng.testcontainers.GenericContainer
 import com.sksamuel.elastic4s.http.HttpClient
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
@@ -17,7 +16,6 @@ import scala.util.Try
 
 class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with BeforeAndAfterAll with StubControllerComponentsFactory with MockitoSugar {
 
-  var container: GenericContainer = _
   var configuration: Configuration = _
   var esQueryService: ESQueryService = _
 

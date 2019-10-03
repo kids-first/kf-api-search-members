@@ -17,17 +17,22 @@ libraryDependencies ++= Seq(
 
   "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3" % Test,
 
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
+  "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion
+    exclude("commons-logging", "commons-logging")
+    exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
 
-  "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion exclude("commons-logging", "commons-logging"),
+  "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion
+    exclude("commons-logging", "commons-logging")
+    exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
 
-  "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion %Test exclude("commons-logging", "commons-logging"),
+  "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion % Test
+    exclude("commons-logging", "commons-logging")
+    exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
+
   "com.auth0" % "jwks-rsa" % "0.8.3",
   "com.pauldijou" %% "jwt-play" % "4.0.0",
   "com.pauldijou" %% "jwt-core" % "4.0.0",
-  "org.mockito" % "mockito-all" % "1.10.19" % Test,
-
-  "com.dimafeng" %% "testcontainers-scala" % "0.31.0" % Test
+  "org.mockito" % "mockito-all" % "1.10.19" % Test
 )
 
 mainClass in assembly := Some("play.core.server.ProdServerStart")
