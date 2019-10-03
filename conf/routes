@@ -3,6 +3,8 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
++anyhost
 GET     /                            controllers.StatusController.index
+
 GET     /searchmembers               controllers.SearchController.search
 
