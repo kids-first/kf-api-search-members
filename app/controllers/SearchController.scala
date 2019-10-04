@@ -14,7 +14,20 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQueryService, authAction: AuthAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
-  def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
+  def headers = List(
+    "Access-Control-Allow-Origin" -> "*",
+    "Access-Control-Allow-Methods" -> "GET, POST, OPTIONS, DELETE, PUT",
+    "Access-Control-Max-Age" -> "3600",
+    "Access-Control-Allow-Headers" -> "Origin, Content-Type, Accept, Authorization",
+    "Access-Control-Allow-Credentials" -> "true"
+  )
+
+  def options = Action { request =>
+    NoContent.withHeaders(headers : _*)
+  }
+
+
+  def search(): Action[AnyContent] = Action.async { implicit request: Request[AnyContent] =>
 
     type HighLights = Map[String, Map[String, Seq[String]]]
 
