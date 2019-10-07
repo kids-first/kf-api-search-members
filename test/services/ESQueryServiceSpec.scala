@@ -39,7 +39,7 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
               textField("institutionalEmail"),
               keywordField("acceptedTerms"),
               booleanField("isPublic"),
-              //        textField("doc.Roles"), FIXME
+              keywordField("doc.Roles"),
               keywordField("title"),
               textField("jobTitle").fields(keywordField("raw")),
               textField("institution").fields(keywordField("raw")),
@@ -57,10 +57,10 @@ class ESQueryServiceSpec extends FlatSpec with DockerTests with Matchers with Be
 
       esClient.execute(
         bulk(
-          indexRequest("1", MemberDocument("John", "DoeC", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("2", MemberDocument("John", "DoeA", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("3", MemberDocument("JohnC", "DoeB", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, Nil)),
-          indexRequest("4", MemberDocument("Doe", "John", Some("jdoeemail@gmail.com"), isPublic = true, None, None, None, None, List("cancer", "pandas")))
+          indexRequest("1", MemberDocument("1234" ,"John", "DoeC", Some("jdoeemail@gmail.com"), isPublic = true, roles = List("Community", "Research"), _title = Some("Dr."), None, None, None, None, Nil)),
+          indexRequest("2", MemberDocument("abcd", "John", "DoeA", Some("jdoeemail@gmail.com"), isPublic = true, roles = List("Research"), _title = Some("M."), None, None, None, None, Nil)),
+          indexRequest("3", MemberDocument("efg", "JohnC", "DoeB", Some("jdoeemail@gmail.com"), isPublic = true, roles = List("Community"), _title = Some("Dr."), None, None, None, None, Nil)),
+          indexRequest("4", MemberDocument("hij", "Doe", "John", Some("djohnemail@gmail.com"), isPublic = true, roles = Nil, _title = None, None, None, None, None, List("cancer", "pandas")))
         ).refresh(RefreshPolicy.Immediate)
       ).await
     }
