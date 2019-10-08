@@ -29,7 +29,7 @@ case class MemberDocument(
 object MemberDocument {
 
   implicit val memberDocumentReads: Reads[MemberDocument] = (
-    (JsPath \\"_id").read[String] and
+      (JsPath \\"_id").read[String] and
       (JsPath \\"firstName").read[String] and
       (JsPath \\ "lastName").read[String] and
       (JsPath \\ "email").readNullable[String] and
