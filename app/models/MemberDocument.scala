@@ -29,18 +29,18 @@ case class MemberDocument(
 object MemberDocument {
 
   implicit val memberDocumentReads: Reads[MemberDocument] = (
-      (JsPath \\"_id").read[String] and
-      (JsPath \\"firstName").read[String] and
-      (JsPath \\ "lastName").read[String] and
-      (JsPath \\ "email").readNullable[String] and
-      (JsPath \\ "isPublic").readNullable[Boolean].map(_.getOrElse(false)) and
-      (JsPath \\ "roles").read[List[String]] and
-      (JsPath \\ "title").readNullable[String] and
-      (JsPath \\ "institution").readNullable[String] and
-      (JsPath \\ "city").readNullable[String] and
-      (JsPath \\ "state").readNullable[String] and
-      (JsPath \\ "country").readNullable[String] and
-      (JsPath \\ "interests").read[List[String]]
+      (JsPath \"_id").read[String] and
+      (JsPath \"firstName").read[String] and
+      (JsPath \ "lastName").read[String] and
+      (JsPath \ "email").readNullable[String] and
+      (JsPath \ "isPublic").readNullable[Boolean].map(_.getOrElse(false)) and
+      (JsPath \ "roles").read[List[String]] and
+      (JsPath \ "title").readNullable[String] and
+      (JsPath \ "institution").readNullable[String] and
+      (JsPath \ "city").readNullable[String] and
+      (JsPath \ "state").readNullable[String] and
+      (JsPath \ "country").readNullable[String] and
+      (JsPath \ "interests").read[List[String]]
     )(MemberDocument.apply _)
 
   implicit val memberDocumentWrites: Writes[MemberDocument] = (
