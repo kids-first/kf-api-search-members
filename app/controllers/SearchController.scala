@@ -39,7 +39,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
         val resultsF = esQueryService.generateFilterQueries(qf)
         val countsF = esQueryService.generateCountQueries(qf)
 
-        val resultAndCOunt: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
+        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
           results <- resultsF
           counts <- countsF
         } yield {
@@ -49,12 +49,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
           } yield (resultSuccess, countsSuccess)
         }
 
-        resultAndCOunt map {
-          case Right((reqSuccess, countSuccess)) =>
+        resultAndCount map {
+          case Right((resultSuccess, countSuccess)) =>
             logger.info(s"ElasticSearch: RequestSuccess with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
 
-            val publicMembers: Seq[JsObject] = reqSuccess.result.hits.hits.map(sh =>
+            val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
                 Json.obj("_id" -> sh.id) ++
                 Json.obj("highlight" -> sh.highlight)
