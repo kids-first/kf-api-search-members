@@ -1,4 +1,4 @@
-package models
+package utils
 
 case class MemberDocument(
                            _id: String,
