@@ -65,7 +65,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
               "count" -> Json.obj(
                 "total" -> countSuccess.result.totalHits,
                 "public" -> fromCount("public", countAggs),
-                "private" -> fromCount("public", countAggs)
+                "private" -> fromCount("private", countAggs)
               ),
               "publicMembers" -> Json.toJson(publicMembers)
             )
