@@ -85,6 +85,15 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
     }
   }
 
+  it should "return all results with empty  highlight if queryString is empty" in {
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("", 0, 100)).await.right.get.result.hits.hits.toSeq
+    result.size shouldBe 5
+    result.foreach {
+      r =>
+        r.highlight shouldBe null
+    }
+  }
+
   "generateCountQueries" should "return the total numbers of members, the total public and the total private fr a specific filter" in {
     val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("gmail", 0, 100)).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
