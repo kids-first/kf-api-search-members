@@ -57,7 +57,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
                 Json.obj("_id" -> sh.id) ++
-                Json.obj("highlight" -> sh.highlight)
+                Json.obj("highlight" -> Option(sh.highlight))
             ).toSeq
 
 

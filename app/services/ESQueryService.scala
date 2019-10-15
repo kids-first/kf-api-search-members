@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ESQueryService @Inject()(configuration: Configuration) extends Logging{
+class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   private val host = configuration.get[String]("elasticsearch.host")
   private val ports = configuration.get[Seq[Int]]("elasticsearch.ports")
@@ -29,20 +29,20 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging{
 
   def generateCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
     val queriesShould: Seq[QueryDefinition] = queryFilter(qf)
-      val q = search("member")
-        .size(0)
-        .bool {
-          BoolQueryDefinition().filter(
-            matchQuery("acceptedTerms", true)
-          ).should(
-            queriesShould
-          ).minimumShouldMatch(1)
+    val q = search("member")
+      .size(0)
+      .bool {
+        BoolQueryDefinition().filter(
+          matchQuery("acceptedTerms", true)
+        ).should(
+          queriesShould
+        ).minimumShouldMatch(1)
 
-        }
-        .aggregations (
-          filterAgg("public", termQuery("isPublic", true)),
-          filterAgg("private", termQuery("isPublic", false))
-        )
+      }
+      .aggregations(
+        filterAgg("public", termQuery("isPublic", true)),
+        filterAgg("private", termQuery("isPublic", false))
+      )
     logger.debug(s"ES Query = ${client.show(q)}")
     client.execute {
       q
@@ -54,32 +54,34 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging{
 
     val queriesShould: Seq[QueryDefinition] = queryFilter(qf)
 
-      val q = search("member")
-        .from(qf.start)
-        .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
-        .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
-        .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
-        .bool {
-          BoolQueryDefinition().filter(
-            matchQuery("isPublic", true),
-            matchQuery("acceptedTerms", true)
-          ).should(
-            queriesShould
-          ).minimumShouldMatch(1)
+    val q = search("member")
+      .from(qf.start)
+      .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
+      .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
+      .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
+      .bool {
+        BoolQueryDefinition().filter(
+          matchQuery("isPublic", true),
+          matchQuery("acceptedTerms", true)
+        ).should(
+          queriesShould
+        ).minimumShouldMatch(1)
 
-        }
-        .highlighting(
-          highlight("interests"),
-          highlight("firstName"),
-          highlight("lastName"),
-          highlight("institution"),
-          highlight("city"),
-          highlight("state"),
-          highlight("country"),
-          highlight("email"))
-    logger.debug(s"ES Query = ${client.show(q)}")
+      }
+
+    val highlightedQuery = if (qf.queryString.isEmpty) q else
+      q.highlighting(
+        highlight("interests"),
+        highlight("firstName"),
+        highlight("lastName"),
+        highlight("institution"),
+        highlight("city"),
+        highlight("state"),
+        highlight("country"),
+        highlight("email"))
+    logger.debug(s"ES Query = ${client.show(highlightedQuery)}")
     val resp = client.execute {
-      q
+      highlightedQuery
     }
     resp
   }
