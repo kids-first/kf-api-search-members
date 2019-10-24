@@ -18,8 +18,9 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
 
     val members = Seq(
       MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("role1"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
-      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false),
-      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false)
+      MemberDocument(_id = "a2", firstName = "Jane", lastName = "River", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("role2"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
+      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("role1")),
+      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false, roles = List("role1"))
     )
     populateIndex(members)
 
@@ -41,7 +42,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&start=0&end=20"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&role=role1&start=0&end=20"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -75,7 +76,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search with empty queryString should return results with highlights empty" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20&role=role1"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200

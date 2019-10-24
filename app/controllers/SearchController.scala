@@ -27,8 +27,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
       override def unapply(qs: QueryString): Option[QueryFilter] = qs match {
         case q"queryString=$queryString" ?
           q"start=${int(start)}" ?
-          q"end=${int(end)}" =>
-          Some(QueryFilter(queryString, start, end))
+          q"end=${int(end)}" ?
+          q_s"role=$roles"=>
+          Some(QueryFilter(queryString, start, end, roles))
         case _ =>
           None
       }
@@ -51,7 +52,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
         resultAndCount map {
           case Right((resultSuccess, countSuccess)) =>
-            logger.info(s"ElasticSearch: RequestSuccess with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
+            logger.info(s"ElasticSearch: RequestSuccess with query parameters: q=${qf.queryString} roles=${} from ${qf.start} and size ${qf.end}")
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
 
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
