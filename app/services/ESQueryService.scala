@@ -36,7 +36,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       }
       .aggregations(
         filterAgg("public", termQuery("isPublic", true)),
-        filterAgg("private", termQuery("isPublic", false))
+        filterAgg("private", termQuery("isPublic", false)),
       )
     logger.debug(s"ES Query = ${client.show(q)}")
     client.execute {
@@ -55,6 +55,12 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .bool {
         queryFilter(qf, matchQuery("isPublic", true), matchQuery("acceptedTerms", true))
       }
+      .aggregations (
+      filterAgg("research", termQuery("roles", "research")),
+      filterAgg("community", termQuery("roles", "community")),
+      filterAgg("patient", termQuery("roles", "patient")),
+      filterAgg("health", termQuery("roles", "health")),
+    )
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
       q.highlighting(
