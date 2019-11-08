@@ -17,8 +17,8 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
 
     val members = Seq(
       MemberDocument("a1", "John", "DoeC", Some("jdoeemail@gmail.com"), roles = List("Community", "Research"), _title = Some("Dr.")),
-      MemberDocument("a2", "John", "DoeA", Some("jdoeemail@gmail.com"), roles = List("Research"), _title = Some("M.")),
-      MemberDocument("b1", "JohnC", "DoeB", Some("jdoeemail@gmail.com"), roles = List("Community"), _title = Some("Dr.")),
+      MemberDocument("a2", "John", "DoeA", Some("jdoeemail@gmail.com"), roles = List("Patient"), _title = Some("M.")),
+      MemberDocument("b1", "JohnC", "DoeB", Some("jdoeemail@gmail.com"), roles = List("Other"), _title = Some("Dr.")),
       MemberDocument("b2", "Doe", "John", Some("djohnemail@gmail.com"), interests = List("cancer", "pandas")),
       MemberDocument("c1", "Doe", "John", Some("djohnemail@yahoo.com")),
       MemberDocument("private_member", "Doe", "John", Some("djohnemail@gmail.com"), isPublic = false),
@@ -55,6 +55,14 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
 
     result.foreach {
       r => r.id shouldNot be("private_member")
+    }
+  }
+
+  it should "return only members with role Community or Patient" in {
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("John", 0, 100, roles = Seq("Community", "Patient"))).await.right.get.result.hits.hits.toSeq
+
+    result.foreach {
+      r => r.sourceAsMap.get("roles").asInstanceOf[Option[Seq[String]]].getOrElse(Nil) should contain atLeastOneOf("Community", "Patient")
     }
   }
 
@@ -101,4 +109,13 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
       "public" -> Map("doc_count" -> 4)
     )
   }
+  it should "return the total numbers of members, the total public and the total private fr a specific filter, including roles" in {
+    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("gmail", 0, 100, roles=Seq("Community", "Patient"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    result should contain theSameElementsAs Map(
+      "private" -> Map("doc_count" -> 0),
+      "public" -> Map("doc_count" -> 2)
+    )
+  }
+
+
 }

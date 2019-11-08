@@ -4,6 +4,7 @@ import com.sksamuel.elastic4s.ElasticsearchClientUri
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
+import com.sksamuel.elastic4s.searches.queries.matches.MatchQueryDefinition
 import com.sksamuel.elastic4s.searches.queries.{BoolQueryDefinition, QueryDefinition}
 import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
 import com.sksamuel.exts.Logging
@@ -28,16 +29,10 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   private val client = HttpClient(elasticsearchClientUri)
 
   def generateCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
-    val queriesShould: Seq[QueryDefinition] = queryFilter(qf)
     val q = search("member")
       .size(0)
       .bool {
-        BoolQueryDefinition().filter(
-          matchQuery("acceptedTerms", true)
-        ).should(
-          queriesShould
-        ).minimumShouldMatch(1)
-
+        queryFilter(qf, matchQuery("acceptedTerms", true))
       }
       .aggregations(
         filterAgg("public", termQuery("isPublic", true)),
@@ -50,9 +45,28 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateRoleCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+    val q = search("member")
+      .size(0)
+      .bool {
+        BoolQueryDefinition().filter(matchQuery("acceptedTerms", true), matchQuery("isPublic", true)).should(
+          matchQueryString(qf)
+        ).minimumShouldMatch(1)
+      }
+      .aggregations(
+        filterAgg("research", termQuery("roles", "research")),
+        filterAgg("community", termQuery("roles", "community")),
+        filterAgg("patient", termQuery("roles", "patient")),
+        filterAgg("health", termQuery("roles", "health")),
+      )
+    logger.debug(s"ES Query = ${client.show(q)}")
+    client.execute {
+      q
+    }
 
-    val queriesShould: Seq[QueryDefinition] = queryFilter(qf)
+  }
+
+  def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
 
     val q = search("member")
       .from(qf.start)
@@ -60,13 +74,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
       .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
       .bool {
-        BoolQueryDefinition().filter(
-          matchQuery("isPublic", true),
-          matchQuery("acceptedTerms", true)
-        ).should(
-          queriesShould
-        ).minimumShouldMatch(1)
-
+        queryFilter(qf, matchQuery("isPublic", true), matchQuery("acceptedTerms", true))
       }
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
@@ -79,14 +87,14 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         highlight("state"),
         highlight("country"),
         highlight("email"))
-    logger.debug(s"ES Query = ${client.show(highlightedQuery)}")
+    logger.warn(s"ES Query = ${client.show(highlightedQuery)}")
     val resp = client.execute {
       highlightedQuery
     }
     resp
   }
 
-  private def queryFilter(qf: QueryFilter) = {
+  private def matchQueryString(qf: QueryFilter) = {
     Seq(
       wildcardQuery("interests", s"*${qf.queryString}*"),
       matchPhrasePrefixQuery("firstName", s"${qf.queryString}"),
@@ -97,6 +105,16 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       matchPhrasePrefixQuery("country", s"${qf.queryString}"),
       wildcardQuery("email", s"*${qf.queryString}*")
     )
+  }
+
+  private def queryFilter(qf: QueryFilter, filters: MatchQueryDefinition*) = {
+
+    val appendedFilters = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
+    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
+    BoolQueryDefinition().filter(appendedFilters).should(
+      queriesShould
+    ).minimumShouldMatch(1)
+
   }
 
   sys.addShutdownHook(client.close())

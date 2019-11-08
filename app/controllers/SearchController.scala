@@ -27,8 +27,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
       override def unapply(qs: QueryString): Option[QueryFilter] = qs match {
         case q"queryString=$queryString" ?
           q"start=${int(start)}" ?
-          q"end=${int(end)}" =>
-          Some(QueryFilter(queryString, start, end))
+          q"end=${int(end)}" ?
+          q_s"role=$roles"=>
+          Some(QueryFilter(queryString, start, end, roles))
         case _ =>
           None
       }
@@ -38,21 +39,25 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
       case Some(qf) =>
         val resultsF = esQueryService.generateFilterQueries(qf)
         val countsF = esQueryService.generateCountQueries(qf)
+        val countsRolesF = esQueryService.generateRoleCountQueries(qf)
 
-        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
+        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
           results <- resultsF
           counts <- countsF
+          countsRoles <- countsRolesF
         } yield {
           for {
             resultSuccess <- results
             countsSuccess <- counts
-          } yield (resultSuccess, countsSuccess)
+            countsRolesSuccess <- countsRoles
+          } yield (resultSuccess, countsSuccess, countsRolesSuccess)
         }
 
         resultAndCount map {
-          case Right((resultSuccess, countSuccess)) =>
-            logger.info(s"ElasticSearch: RequestSuccess with query parameters: ${qf.queryString} from ${qf.start} and size ${qf.end}")
+          case Right((resultSuccess, countSuccess, countsRolesSuccess)) =>
+            logger.info(s"ElasticSearch: RequestSuccess with query parameters: q=${qf.queryString} roles=${} from ${qf.start} and size ${qf.end}")
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+            val countAggsRoles = countsRolesSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
 
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
@@ -60,12 +65,15 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
                 Json.obj("highlight" -> Option(sh.highlight))
             ).toSeq
 
-
             val result = Json.obj(
               "count" -> Json.obj(
                 "total" -> countSuccess.result.totalHits,
                 "public" -> fromCount("public", countAggs),
-                "private" -> fromCount("private", countAggs)
+                "private" -> fromCount("private", countAggs),
+                "research" -> fromCount("research", countAggsRoles),
+                "community" -> fromCount("community", countAggsRoles),
+                "patient" -> fromCount("patient", countAggsRoles),
+                "health" -> fromCount("health", countAggsRoles),
               ),
               "publicMembers" -> Json.toJson(publicMembers)
             )

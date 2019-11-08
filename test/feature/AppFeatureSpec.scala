@@ -17,9 +17,10 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   override def beforeAll(): Unit = {
 
     val members = Seq(
-      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("role1"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
-      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false),
-      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false)
+      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
+      MemberDocument(_id = "a2", firstName = "Jane", lastName = "River", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("community"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
+      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("research")),
+      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false, roles = List("research"))
     )
     populateIndex(members)
 
@@ -41,7 +42,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&start=0&end=20"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&role=research&start=0&end=20"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -49,7 +50,12 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
           "count" -> Json.obj(
             "total" -> 2,
             "public" -> 1,
-            "private" -> 1),
+            "private" -> 1,
+            "research" -> 1,
+            "community" -> 1,
+            "patient" -> 0,
+            "health" -> 0
+          ),
           "publicMembers" -> Json.arr(
             Json.obj(
               "institution" -> "CHUSJ",
@@ -58,7 +64,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "firstName" -> "John",
               "highlight" -> Json.obj("email" -> Json.arr("<em>jdoeemail@gmail.com</em>")),
               "city" -> "Montreal",
-              "roles" -> Json.arr("role1"),
+              "roles" -> Json.arr("research"),
               "state" -> "Quebec",
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
@@ -75,7 +81,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search with empty queryString should return results with highlights empty" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20&role=research"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -83,7 +89,12 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
           "count" -> Json.obj(
             "total" -> 2,
             "public" -> 1,
-            "private" -> 1),
+            "private" -> 1,
+            "research" -> 1,
+            "community" -> 1,
+            "patient" -> 0,
+            "health" -> 0
+          ),
           "publicMembers" -> Json.arr(
             Json.obj(
               "institution" -> "CHUSJ",
@@ -92,7 +103,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "firstName" -> "John",
               "highlight" -> Option.empty[String],
               "city" -> "Montreal",
-              "roles" -> Json.arr("role1"),
+              "roles" -> Json.arr("research"),
               "state" -> "Quebec",
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
