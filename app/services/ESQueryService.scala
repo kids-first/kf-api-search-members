@@ -58,6 +58,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         filterAgg("community", termQuery("roles", "community")),
         filterAgg("patient", termQuery("roles", "patient")),
         filterAgg("health", termQuery("roles", "health")),
+        termsAgg("interests", "interests.raw")
       )
     logger.debug(s"ES Query = ${client.show(q)}")
     client.execute {
@@ -74,7 +75,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
       .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
       .bool {
-        queryFilter(qf, matchQuery("isPublic", true), matchQuery("acceptedTerms", true))
+        queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
@@ -109,12 +110,14 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   private def queryFilter(qf: QueryFilter, filters: MatchQueryDefinition*) = {
 
-    val appendedFilters = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
-    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
-    BoolQueryDefinition().filter(appendedFilters).should(
-      queriesShould
-    ).minimumShouldMatch(1)
+    val appendedFiltersRoles = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
+    val appendedFiltersInterests = if (qf.interests.nonEmpty) appendedFiltersRoles :+ should(qf.interests.map(i => matchQuery("interests.raw", i))).minimumShouldMatch(1) else appendedFiltersRoles
 
+    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
+    BoolQueryDefinition()
+      .filter(appendedFiltersInterests)
+      .should(queriesShould)
+      .minimumShouldMatch(1)
   }
 
   sys.addShutdownHook(client.close())
