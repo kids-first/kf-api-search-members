@@ -6,7 +6,8 @@ import controllers.SearchController._
 import javax.inject._
 import models.QueryFilter
 import play.api.Logging
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.Json.JsValueWrapper
+import play.api.libs.json.{JsBoolean, JsNumber, JsObject, JsValue, Json, Writes}
 import play.api.mvc._
 import play.api.routing.sird._
 import services.{AuthAction, ESQueryService}
@@ -23,13 +24,21 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
     val qs: QueryString = request.queryString
 
+    implicit val listWrites: Writes[List[(String, Int)]] = new Writes[List[(String, Int)]] {
+      def writes(list: List[(String, Int)]): JsValue =
+        Json.obj(list.map{case (s, o) =>
+          val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
+          ret
+        }:_*)
+    }
+
     object queryFilter extends QueryStringParameterExtractor[QueryFilter] {
       override def unapply(qs: QueryString): Option[QueryFilter] = qs match {
         case q"queryString=$queryString" ?
           q"start=${int(start)}" ?
           q"end=${int(end)}" ?
           q_s"role=$roles" ?
-          q_s"interests=$interests"=>
+          q_s"interest=$interests"=>
           Some(QueryFilter(queryString, start, end, roles, interests))
         case _ =>
           None
@@ -40,32 +49,36 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
       case Some(qf) =>
         val resultsF = esQueryService.generateFilterQueries(qf)
         val countsF = esQueryService.generateCountQueries(qf)
-        val countsRolesF = esQueryService.generateRoleCountQueries(qf)
 
-        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
+        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
           results <- resultsF
           counts <- countsF
-          countsRoles <- countsRolesF
         } yield {
           for {
             resultSuccess <- results
             countsSuccess <- counts
-            countsRolesSuccess <- countsRoles
-          } yield (resultSuccess, countsSuccess, countsRolesSuccess)
+          } yield (resultSuccess, countsSuccess)
         }
 
         resultAndCount map {
-          case Right((resultSuccess, countSuccess, countsRolesSuccess)) =>
+          case Right((resultSuccess, countSuccess)) =>
             logger.info(s"ElasticSearch: RequestSuccess with query parameters: q=${qf.queryString} roles=${} from ${qf.start} and size ${qf.end}")
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
-            val countAggsRoles = countsRolesSuccess.result.aggregationsAsMap
+            val countAggsFilters = resultSuccess.result.aggregationsAsMap
 
             //FIXME can asInstanceOf be avoided?
-            val interests = countAggsRoles.get("interests").asInstanceOf[Option[Map[String, Any]]]
-            val buckets = interests.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Map[String,Any]]]]
+            val interests = countAggsFilters.get("interests").asInstanceOf[Option[Map[String, Any]]]
+            val bucketsInterests = interests.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Map[String, Any]]]]
+            val roles = countAggsFilters.get("roles").asInstanceOf[Option[Map[String, Any]]]
+            val bucketsRoles = roles.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Map[String, Any]]]]
 
             //FIXME this works, but its horrible... to be discussed
-            val listOfInterests = buckets match {
+            val listOfInterests = bucketsInterests match {
+              case Some(list) => list.map(i => (i.getOrElse("key", ""), i.getOrElse("doc_count", 0))).asInstanceOf[List[(String, Int)]].filter(_._1 != "")
+              case None => List.empty
+            }
+
+            val listOfRoles = bucketsRoles match {
               case Some(list) => list.map(i => (i.getOrElse("key", ""), i.getOrElse("doc_count", 0))).asInstanceOf[List[(String, Int)]].filter(_._1 != "")
               case None => List.empty
             }
@@ -81,14 +94,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
                 "total" -> countSuccess.result.totalHits,
                 "public" -> fromCount("public", countAggs),
                 "private" -> fromCount("private", countAggs),
-                "research" -> fromCount("research", countAggsRoles),
-                "community" -> fromCount("community", countAggsRoles),
-                "patient" -> fromCount("patient", countAggsRoles),
-                "health" -> fromCount("health", countAggsRoles),
+                "interests" -> Json.toJson(listOfInterests),
+                "roles" -> Json.toJson(listOfRoles)
               ),
               "publicMembers" -> Json.toJson(publicMembers),
-              "interests" -> listOfInterests.map(i => Json.obj(i._1.toString -> i._2))
             )
+            println(result)
             Ok(result)
           case Left(failure) =>
             logger.error(s"ElasticSearch: RequestFailure was returned $failure")

@@ -45,28 +45,6 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateRoleCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
-    val q = search("member")
-      .size(0)
-      .bool {
-        BoolQueryDefinition().filter(matchQuery("acceptedTerms", true), matchQuery("isPublic", true)).should(
-          matchQueryString(qf)
-        ).minimumShouldMatch(1)
-      }
-      .aggregations(
-        filterAgg("research", termQuery("roles", "research")),
-        filterAgg("community", termQuery("roles", "community")),
-        filterAgg("patient", termQuery("roles", "patient")),
-        filterAgg("health", termQuery("roles", "health")),
-        termsAgg("interests", "interests.raw")
-      )
-    logger.debug(s"ES Query = ${client.show(q)}")
-    client.execute {
-      q
-    }
-
-  }
-
   def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
 
     val q = search("member")
@@ -77,6 +55,10 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .bool {
         queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
+      .aggregations(
+        termsAgg("roles", "roles"),
+        termsAgg("interests", "interests.raw")
+      )
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
       q.highlighting(

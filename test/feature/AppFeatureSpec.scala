@@ -43,7 +43,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&role=research&start=0&end=20&interests=Cancer%20Brain"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&role=research&start=0&end=20&interest=Cancer%20Brain"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -85,7 +85,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search with empty queryString should return results with highlights empty" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20&role=research&interests=Cancer%20Brain"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20&role=research&interest=Cancer%20Brain"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
