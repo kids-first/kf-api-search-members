@@ -4,6 +4,7 @@ import com.sksamuel.elastic4s.ElasticsearchClientUri
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
+import com.sksamuel.elastic4s.searches.aggs.TermsAggregationDefinition
 import com.sksamuel.elastic4s.searches.queries.matches.MatchQueryDefinition
 import com.sksamuel.elastic4s.searches.queries.{BoolQueryDefinition, QueryDefinition}
 import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
@@ -57,7 +58,9 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       }
       .aggregations(
         termsAgg("roles", "roles"),
-        termsAgg("interests", "interests.raw")
+        // Arbitrary max number of returns of 1000 - Composite aggregation not available for elastic4s v 6.1.4 (min req'd
+        //  6.4
+        TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
       )
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else

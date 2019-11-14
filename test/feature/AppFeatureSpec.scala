@@ -52,10 +52,13 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
             "total" -> 2,
             "public" -> 1,
             "private" -> 1,
-            "research" -> 2,
-            "community" -> 1,
-            "patient" -> 0,
-            "health" -> 0
+            "interests" -> Json.obj(
+              "Cancer Brain" -> 1
+            ),
+            "interestsOthers" -> 0,
+            "roles" -> Json.obj(
+              "research" -> 1
+            )
           ),
           "publicMembers" -> Json.arr(
             Json.obj(
@@ -72,10 +75,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "title" -> "Dr.",
               "email" -> "jdoeemail@gmail.com"
             )
-          ),
-          "interests" -> Json.arr(
-            Json.obj("Cancer Brain" -> 2),
-            Json.obj("Cancer Brain Left Side" -> 1)
           )
         )
     }
@@ -94,10 +93,13 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
             "total" -> 2,
             "public" -> 1,
             "private" -> 1,
-            "research" -> 2,
-            "community" -> 1,
-            "patient" -> 0,
-            "health" -> 0
+            "interests" -> Json.obj(
+              "Cancer Brain" -> 1
+            ),
+            "interestsOthers" -> 0,
+            "roles" -> Json.obj(
+              "research" -> 1
+            )
           ),
           "publicMembers" -> Json.arr(
             Json.obj(
@@ -114,10 +116,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "title" -> "Dr.",
               "email" -> "jdoeemail@gmail.com"
             )
-          ),
-          "interests" -> Json.arr(
-            Json.obj("Cancer Brain" -> 2),
-            Json.obj("Cancer Brain Left Side" -> 1)
           )
         )
     }

@@ -7,7 +7,7 @@ import javax.inject._
 import models.QueryFilter
 import play.api.Logging
 import play.api.libs.json.Json.JsValueWrapper
-import play.api.libs.json.{JsBoolean, JsNumber, JsObject, JsValue, Json, Writes}
+import play.api.libs.json._
 import play.api.mvc._
 import play.api.routing.sird._
 import services.{AuthAction, ESQueryService}
@@ -18,19 +18,21 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQueryService, authAction: AuthAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
+  implicit val bucketlistWrites: Writes[List[(String, Int)]] = new Writes[List[(String, Int)]] {
+    def writes(list: List[(String, Int)]): JsValue =
+      Json.obj(list.map{case (s, o) =>
+        val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
+        ret
+      }:_*)
+  }
+
   def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
 
     type HighLights = Map[String, Map[String, Seq[String]]]
 
     val qs: QueryString = request.queryString
 
-    implicit val listWrites: Writes[List[(String, Int)]] = new Writes[List[(String, Int)]] {
-      def writes(list: List[(String, Int)]): JsValue =
-        Json.obj(list.map{case (s, o) =>
-          val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
-          ret
-        }:_*)
-    }
+
 
     object queryFilter extends QueryStringParameterExtractor[QueryFilter] {
       override def unapply(qs: QueryString): Option[QueryFilter] = qs match {
@@ -66,22 +68,8 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
             val countAggsFilters = resultSuccess.result.aggregationsAsMap
 
-            //FIXME can asInstanceOf be avoided?
-            val interests = countAggsFilters.get("interests").asInstanceOf[Option[Map[String, Any]]]
-            val bucketsInterests = interests.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Map[String, Any]]]]
-            val roles = countAggsFilters.get("roles").asInstanceOf[Option[Map[String, Any]]]
-            val bucketsRoles = roles.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Map[String, Any]]]]
-
-            //FIXME this works, but its horrible... to be discussed
-            val listOfInterests = bucketsInterests match {
-              case Some(list) => list.map(i => (i.getOrElse("key", ""), i.getOrElse("doc_count", 0))).asInstanceOf[List[(String, Int)]].filter(_._1 != "")
-              case None => List.empty
-            }
-
-            val listOfRoles = bucketsRoles match {
-              case Some(list) => list.map(i => (i.getOrElse("key", ""), i.getOrElse("doc_count", 0))).asInstanceOf[List[(String, Int)]].filter(_._1 != "")
-              case None => List.empty
-            }
+            val listOfInterests = getBuckets("interests", countAggsFilters)
+            val listOfRoles =  getBuckets("roles", countAggsFilters)
 
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
@@ -94,12 +82,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
                 "total" -> countSuccess.result.totalHits,
                 "public" -> fromCount("public", countAggs),
                 "private" -> fromCount("private", countAggs),
-                "interests" -> Json.toJson(listOfInterests),
-                "roles" -> Json.toJson(listOfRoles)
+                "interests" -> Json.toJson(listOfInterests._1),
+                "interestsOthers" -> listOfInterests._2,
+                "roles" -> Json.toJson(listOfRoles._1)
               ),
               "publicMembers" -> Json.toJson(publicMembers),
             )
-            println(result)
             Ok(result)
           case Left(failure) =>
             logger.error(s"ElasticSearch: RequestFailure was returned $failure")
@@ -114,8 +102,21 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
 object SearchController {
 
-  def fromCount(bucket: String, aggs: Map[String, Any]): Int = {
+  type Agg = Map[String, Any]
+
+  def fromCount(bucket: String, aggs: Agg): Int = {
     val buckets = aggs.get(bucket).asInstanceOf[Option[Map[String, Int]]]
     buckets.flatMap(m => m.get("doc_count")).getOrElse(0)
+  }
+
+  def getBuckets(bucketName: String, agg: Agg): (List[(String, Int)], Int) = {
+    val bucket = agg.get(bucketName).asInstanceOf[Option[Agg]]
+    val allBuckets = bucket.flatMap(i => i.get("buckets")).asInstanceOf[Option[List[Agg]]]
+    val countOthers = bucket.flatMap(i => i.get("sum_other_doc_count")).asInstanceOf[Option[Int]]
+
+    allBuckets match {
+      case Some(list) => (list.map(i => (i.getOrElse("key", ""), i.getOrElse("doc_count", 0))).asInstanceOf[List[(String, Int)]].filter(_._1 != ""), countOthers.getOrElse(0))
+      case None => (List.empty, 0)
+    }
   }
 }
