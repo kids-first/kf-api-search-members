@@ -57,7 +57,10 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
       .aggregations(
-        termsAgg("roles", "roles"),
+        filterAgg("research", termQuery("roles", "research")),
+        filterAgg("community", termQuery("roles", "community")),
+        filterAgg("patient", termQuery("roles", "patient")),
+        filterAgg("health", termQuery("roles", "health")),
         // Arbitrary max number of returns of 1000 - Composite aggregation not available for elastic4s v 6.1.4 (min req'd
         //  6.4
         TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")

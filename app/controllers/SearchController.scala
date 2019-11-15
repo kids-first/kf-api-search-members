@@ -69,7 +69,6 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
             val countAggsFilters = resultSuccess.result.aggregationsAsMap
 
             val listOfInterests = getBuckets("interests", countAggsFilters)
-            val listOfRoles =  getBuckets("roles", countAggsFilters)
 
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
@@ -84,7 +83,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
                 "private" -> fromCount("private", countAggs),
                 "interests" -> Json.toJson(listOfInterests._1),
                 "interestsOthers" -> listOfInterests._2,
-                "roles" -> Json.toJson(listOfRoles._1)
+                "roles" -> Json.obj(
+                  "research" -> fromCount("research", countAggsFilters),
+                  "health" -> fromCount("health", countAggsFilters),
+                  "patient" ->  fromCount("patient", countAggsFilters),
+                  "community" -> fromCount("community", countAggsFilters),
+                )
               ),
               "publicMembers" -> Json.toJson(publicMembers),
             )
