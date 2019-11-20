@@ -4,6 +4,7 @@ import com.sksamuel.elastic4s.ElasticsearchClientUri
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
+import com.sksamuel.elastic4s.searches.aggs.TermsAggregationDefinition
 import com.sksamuel.elastic4s.searches.queries.matches.MatchQueryDefinition
 import com.sksamuel.elastic4s.searches.queries.{BoolQueryDefinition, QueryDefinition}
 import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
@@ -45,27 +46,6 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateRoleCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
-    val q = search("member")
-      .size(0)
-      .bool {
-        BoolQueryDefinition().filter(matchQuery("acceptedTerms", true), matchQuery("isPublic", true)).should(
-          matchQueryString(qf)
-        ).minimumShouldMatch(1)
-      }
-      .aggregations(
-        filterAgg("research", termQuery("roles", "research")),
-        filterAgg("community", termQuery("roles", "community")),
-        filterAgg("patient", termQuery("roles", "patient")),
-        filterAgg("health", termQuery("roles", "health")),
-      )
-    logger.debug(s"ES Query = ${client.show(q)}")
-    client.execute {
-      q
-    }
-
-  }
-
   def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
 
     val q = search("member")
@@ -74,8 +54,17 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
       .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
       .bool {
-        queryFilter(qf, matchQuery("isPublic", true), matchQuery("acceptedTerms", true))
+        queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
+      .aggregations(
+        filterAgg("research", termQuery("roles", "research")),
+        filterAgg("community", termQuery("roles", "community")),
+        filterAgg("patient", termQuery("roles", "patient")),
+        filterAgg("health", termQuery("roles", "health")),
+        // Arbitrary max number of returns of 1000 - Composite aggregation not available for elastic4s v 6.1.4 (min req'd
+        //  6.4
+        TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
+      )
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
       q.highlighting(
@@ -109,12 +98,14 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   private def queryFilter(qf: QueryFilter, filters: MatchQueryDefinition*) = {
 
-    val appendedFilters = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
-    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
-    BoolQueryDefinition().filter(appendedFilters).should(
-      queriesShould
-    ).minimumShouldMatch(1)
+    val appendedFiltersRoles = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
+    val appendedFiltersInterests = if (qf.interests.nonEmpty) appendedFiltersRoles :+ should(qf.interests.map(i => matchQuery("interests.raw", i))).minimumShouldMatch(1) else appendedFiltersRoles
 
+    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
+    BoolQueryDefinition()
+      .filter(appendedFiltersInterests)
+      .should(queriesShould)
+      .minimumShouldMatch(1)
   }
 
   sys.addShutdownHook(client.close())
