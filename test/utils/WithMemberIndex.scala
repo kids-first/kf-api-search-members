@@ -70,6 +70,8 @@ trait WithMemberIndex extends DockerTests {
     "state" -> t.state,
     "country" -> t.country,
     "interests" -> t.interests,
+    "bio"-> t.bio,
+    "story"-> t.story,
     "undesiredField" -> "undesired"
   ).toString()
 

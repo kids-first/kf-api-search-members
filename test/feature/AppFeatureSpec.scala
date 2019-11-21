@@ -17,7 +17,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   override def beforeAll(): Unit = {
 
     val members = Seq(
-      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
+      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain"), bio = Some("my Bio bla jdoeemail bla"), story = Some("My Story jdoeemail bla")),
       MemberDocument(_id = "a2", firstName = "Jane", lastName = "River", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("community"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
       MemberDocument(_id = "a3", firstName = "Jean", lastName = "Gray", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain Left Side")),
       MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("research"), interests = List("Cancer Brain")),
@@ -69,7 +69,10 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "country" -> "Canada",
               "lastName" -> "Doe",
               "firstName" -> "John",
-              "highlight" -> Json.obj("email" -> Json.arr("<em>jdoeemail@gmail.com</em>")),
+              "highlight" -> Json.obj(
+                "email" -> Json.arr("<em>jdoeemail@gmail.com</em>"),
+                "bio" -> Json.arr("my Bio bla <em>jdoeemail</em> bla"),
+                "story" -> Json.arr("My Story <em>jdoeemail</em> bla")),
               "city" -> "Montreal",
               "roles" -> Json.arr("research"),
               "state" -> "Quebec",

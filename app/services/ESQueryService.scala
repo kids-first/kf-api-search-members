@@ -75,7 +75,9 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         highlight("city"),
         highlight("state"),
         highlight("country"),
-        highlight("email"))
+        highlight("email"),
+        highlight("bio"),
+        highlight("story"))
     logger.warn(s"ES Query = ${client.show(highlightedQuery)}")
     val resp = client.execute {
       highlightedQuery
@@ -92,7 +94,9 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       matchPhrasePrefixQuery("city", s"${qf.queryString}"),
       matchPhrasePrefixQuery("state", s"${qf.queryString}"),
       matchPhrasePrefixQuery("country", s"${qf.queryString}"),
-      wildcardQuery("email", s"*${qf.queryString}*")
+      wildcardQuery("email", s"*${qf.queryString}*"),
+      wildcardQuery("bio", s"*${qf.queryString}*"),
+      wildcardQuery("story", s"*${qf.queryString}*")
     )
   }
 

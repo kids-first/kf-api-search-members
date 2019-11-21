@@ -19,7 +19,7 @@ class SearchControllerSpec extends FlatSpec with Matchers{
 
   }
 
-  it should "extract 0 if doc_count not exist for the ginven bucket" in {
+  it should "extract 0 if doc_count not exist for the given bucket" in {
     val aggs = Map("private"-> Map("something_else" -> 12),"public"-> Map("doc_count" -> 24))
 
     SearchController.fromCount("private", aggs) shouldBe 0
