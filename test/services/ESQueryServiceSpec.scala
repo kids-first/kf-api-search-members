@@ -89,7 +89,8 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
           "city",
           "state",
           "country",
-          "interests")
+          "interests"
+        )
     }
   }
 

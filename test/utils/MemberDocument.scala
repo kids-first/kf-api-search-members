@@ -13,5 +13,7 @@ case class MemberDocument(
                            city: Option[String] = None,
                            state: Option[String] = None,
                            country: Option[String] = None,
-                           interests: List[String] = Nil
+                           interests: List[String] = Nil,
+                           bio:Option[String] = None,
+                           story: Option[String] = None
                          )
