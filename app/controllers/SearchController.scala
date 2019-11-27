@@ -18,13 +18,10 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQueryService, authAction: AuthAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
-  implicit val bucketlistWrites: Writes[List[(String, Int)]] = new Writes[List[(String, Int)]] {
-    def writes(list: List[(String, Int)]): JsValue =
-      Json.obj(list.map{case (s, o) =>
-        val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
-        ret
-      }:_*)
-  }
+  implicit val bucketlistWrites: Writes[List[(String, Int)]] = (list: List[(String, Int)]) => Json.obj(list.map { case (s, o) =>
+    val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
+    ret
+  }: _*)
 
   def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
 
@@ -33,14 +30,13 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
     val qs: QueryString = request.queryString
 
 
-
     object queryFilter extends QueryStringParameterExtractor[QueryFilter] {
       override def unapply(qs: QueryString): Option[QueryFilter] = qs match {
         case q"queryString=$queryString" ?
           q"start=${int(start)}" ?
           q"end=${int(end)}" ?
           q_s"role=$roles" ?
-          q_s"interest=$interests"=>
+          q_s"interest=$interests" =>
           Some(QueryFilter(queryString, start, end, roles, interests))
         case _ =>
           None
@@ -50,25 +46,31 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
     queryFilter.unapply(qs) match {
       case Some(qf) =>
         val resultsF = esQueryService.generateFilterQueries(qf)
+        val rolesAggsF = esQueryService.generateRolesAggQuery(qf)
+        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf)
         val countsF = esQueryService.generateCountQueries(qf)
 
-        val resultAndCount: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
+        val all: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
           results <- resultsF
           counts <- countsF
+          rolesAggs <- rolesAggsF
+          interestsAggs <- interestsAggsF
         } yield {
           for {
             resultSuccess <- results
             countsSuccess <- counts
-          } yield (resultSuccess, countsSuccess)
+            rolesAggsSuccess <- rolesAggs
+            interestsAggsSuccess <- interestsAggs
+          } yield (resultSuccess, countsSuccess, rolesAggsSuccess, interestsAggsSuccess)
         }
 
-        resultAndCount map {
-          case Right((resultSuccess, countSuccess)) =>
+        all map {
+          case Right((resultSuccess, countSuccess, rolesAggsSuccess, interestsAggsSuccess)) =>
             logger.info(s"ElasticSearch: RequestSuccess with query parameters: q=${qf.queryString} roles=${} from ${qf.start} and size ${qf.end}")
             val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
-            val countAggsFilters = resultSuccess.result.aggregationsAsMap
+            val rolesAggs = rolesAggsSuccess.result.aggregationsAsMap
 
-            val listOfInterests = getBuckets("interests", countAggsFilters)
+            val (interests, interestsOthers) = getBuckets("interests", interestsAggsSuccess.result.aggregationsAsMap)
 
             val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
@@ -81,13 +83,13 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
                 "total" -> countSuccess.result.totalHits,
                 "public" -> fromCount("public", countAggs),
                 "private" -> fromCount("private", countAggs),
-                "interests" -> Json.toJson(listOfInterests._1),
-                "interestsOthers" -> listOfInterests._2,
+                "interests" -> Json.toJson(interests),
+                "interestsOthers" -> interestsOthers,
                 "roles" -> Json.obj(
-                  "research" -> fromCount("research", countAggsFilters),
-                  "health" -> fromCount("health", countAggsFilters),
-                  "patient" ->  fromCount("patient", countAggsFilters),
-                  "community" -> fromCount("community", countAggsFilters),
+                  "research" -> fromCount("research", rolesAggs),
+                  "health" -> fromCount("health", rolesAggs),
+                  "patient" -> fromCount("patient", rolesAggs),
+                  "community" -> fromCount("community", rolesAggs),
                 )
               ),
               "publicMembers" -> Json.toJson(publicMembers),
