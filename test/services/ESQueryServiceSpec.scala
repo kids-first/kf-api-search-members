@@ -16,9 +16,9 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   override def beforeAll(): Unit = {
 
     val members = Seq(
-      MemberDocument("a1", "John", "DoeC", Some("jdoeemail@gmail.com"), roles = List("Community", "Research"), _title = Some("Dr.")),
-      MemberDocument("a2", "John", "DoeA", Some("jdoeemail@gmail.com"), roles = List("Patient"), _title = Some("M.")),
-      MemberDocument("b1", "JohnC", "DoeB", Some("jdoeemail@gmail.com"), roles = List("Other"), _title = Some("Dr.")),
+      MemberDocument("a1", "John", "DoeC", Some("jdoeemail@gmail.com"), roles = List("community", "research"), _title = Some("Dr.")),
+      MemberDocument("a2", "John", "DoeA", Some("jdoeemail@gmail.com"), roles = List("patient"), _title = Some("M.")),
+      MemberDocument("b1", "JohnC", "DoeB", Some("jdoeemail@gmail.com"), roles = List("community"), _title = Some("Dr."), interests = List("cancer")),
       MemberDocument("b2", "Doe", "John", Some("djohnemail@gmail.com"), interests = List("cancer", "pandas")),
       MemberDocument("c1", "Doe", "John", Some("djohnemail@yahoo.com")),
       MemberDocument("private_member", "Doe", "John", Some("djohnemail@gmail.com"), isPublic = false),
@@ -111,12 +111,36 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
     )
   }
   it should "return the total numbers of members, the total public and the total private fr a specific filter, including roles" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("gmail", 0, 100, roles=Seq("Community", "Patient"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("gmail", 0, 100, roles = Seq("community", "patient"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "private" -> Map("doc_count" -> 0),
-      "public" -> Map("doc_count" -> 2)
+      "public" -> Map("doc_count" -> 3)
     )
   }
 
+
+  "generateRolesAggQuery" should "return the aggregate count for roles" in {
+    val result: Map[String, Map[String, Int]] = esQueryService.generateRolesAggQuery(QueryFilter("gmail", 0, 100, Seq("community"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    result should contain theSameElementsAs Map(
+      "community" -> Map("doc_count" -> 2),
+      "research" -> Map("doc_count" -> 1),
+      "patient" -> Map("doc_count" -> 1),
+      "health" -> Map("doc_count" -> 0)
+    )
+  }
+
+  "generateInterestsAggQuery" should "return the aggregate count for interests" in {
+    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsAggQuery(QueryFilter("gmail", 0, 100, Nil, Seq("cancer"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    result should contain theSameElementsAs Map(
+      "interests" -> Map(
+        "doc_count_error_upper_bound" -> 0,
+        "sum_other_doc_count" -> 0,
+        "buckets" -> List(
+          Map("key" -> "cancer", "doc_count" -> 2),
+          Map("key" -> "pandas", "doc_count" -> 1)
+        )
+      )
+    )
+  }
 
 }

@@ -53,14 +53,15 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
             "public" -> 1,
             "private" -> 1,
             "interests" -> Json.obj(
-              "Cancer Brain" -> 1
+              "Cancer Brain" -> 1,
+              "Cancer Brain Left Side" -> 1
             ),
             "interestsOthers" -> 0,
             "roles" -> Json.obj(
               "research" -> 1,
               "patient" -> 0,
               "health" -> 0,
-              "community" -> 0
+              "community" -> 1
             )
           ),
           "publicMembers" -> Json.arr(
@@ -100,14 +101,15 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
             "public" -> 1,
             "private" -> 1,
             "interests" -> Json.obj(
-              "Cancer Brain" -> 1
+              "Cancer Brain" -> 1,
+              "Cancer Brain Left Side" -> 1
             ),
             "interestsOthers" -> 0,
             "roles" -> Json.obj(
               "research" -> 1,
               "patient" -> 0,
               "health" -> 0,
-              "community" -> 0
+              "community" -> 1
             )
           ),
           "publicMembers" -> Json.arr(

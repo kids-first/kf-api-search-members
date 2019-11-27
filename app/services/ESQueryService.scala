@@ -46,6 +46,37 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
+  def generateRolesAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+    val q = search("member")
+      .size(0)
+      .bool {
+        queryFilter(qf.copy(roles = Nil), matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
+      }
+      .aggregations(
+        filterAgg("research", termQuery("roles", "research")),
+        filterAgg("community", termQuery("roles", "community")),
+        filterAgg("patient", termQuery("roles", "patient")),
+        filterAgg("health", termQuery("roles", "health"))
+      )
+    logger.debug(s"ES Query = ${client.show(q)}")
+    client.execute(q)
+
+  }
+
+  def generateInterestsAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+    val q = search("member")
+      .size(0)
+      .bool {
+        queryFilter(qf.copy(interests = Nil), matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
+      }
+      .aggregations(
+        TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
+      )
+    logger.debug(s"ES Query = ${client.show(q)}")
+    client.execute(q)
+
+  }
+
   def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
 
     val q = search("member")
@@ -56,15 +87,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .bool {
         queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
-      .aggregations(
-        filterAgg("research", termQuery("roles", "research")),
-        filterAgg("community", termQuery("roles", "community")),
-        filterAgg("patient", termQuery("roles", "patient")),
-        filterAgg("health", termQuery("roles", "health")),
-        // Arbitrary max number of returns of 1000 - Composite aggregation not available for elastic4s v 6.1.4 (min req'd
-        //  6.4
-        TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
-      )
+
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
       q.highlighting(
