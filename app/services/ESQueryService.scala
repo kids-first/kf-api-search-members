@@ -108,6 +108,25 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     resp
   }
 
+  def generateInterestsQuery(qs: String): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+    val q = search("member")
+      .size(0)
+      .aggregations(
+        nestedAggregation("all", "searchableInterests")
+          .subAggregations(
+            filterAgg("filtered", boolQuery().should(wildcardQuery("searchableInterests.name", s"*$qs*")))
+              .subAggregations(
+                TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = Some(10))
+              )
+          )
+      )
+
+    logger.warn(s"ES QueryINT = ${client.show(q)}")
+
+    client.execute(q)
+
+  }
+
   private def matchQueryString(qf: QueryFilter) = {
     Seq(
       wildcardQuery("interests", s"*${qf.queryString}*"),
