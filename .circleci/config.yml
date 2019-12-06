@@ -2,6 +2,7 @@ version: 2
 jobs:
   build:
     working_directory: ~/repo
+    resource_class: medium+    
     docker:
       - image: hseeberger/scala-sbt:11.0.4_1.3.2_2.12.10
       - image: docker.elastic.co/elasticsearch/elasticsearch:6.1.4
