@@ -7,4 +7,5 @@
 GET     /                            controllers.StatusController.index
 
 GET     /searchmembers               controllers.SearchController.search
+GET     /interests               controllers.SearchController.interests
 

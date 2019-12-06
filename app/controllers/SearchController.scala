@@ -25,8 +25,6 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
   def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
 
-    type HighLights = Map[String, Map[String, Seq[String]]]
-
     val qs: QueryString = request.queryString
 
 
@@ -103,12 +101,43 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
     }
   }
 
+  def interests(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] => //FIXME  CHANGE THIS BACK
+    request.queryString match {
+      case q"queryString=$queryString" =>
+        esQueryService.generateInterestsQuery(queryString) map {
+          case Right(respSucces) =>
 
+            //Drill down to "buckets"
+            val buckets = respSucces.result.aggregationsAsMap
+              .get("all").asInstanceOf[Option[Agg]]
+              .flatMap(a =>
+                a.get("filtered").asInstanceOf[Option[Agg]])
+              .flatMap(ri =>
+                ri.get("searchableInterests").asInstanceOf[Option[Agg]])
+              .flatMap(r =>
+                r.get("buckets").asInstanceOf[Option[List[Agg]]])
+
+            val interests = buckets match {
+              case Some(list) => list.map(i => i.getOrElse("key", "")).asInstanceOf[List[String]].filter(_ != "")
+              case None => List.empty
+            }
+
+            Ok(Json.obj("interests" -> interests))
+
+          case Left(failure) =>
+            logger.error(s"ElasticSearch: RequestFailure was returned $failure")
+            InternalServerError(s"ElasticSearch request failed $failure")
+        }
+
+      case _ => Future.successful(BadRequest("Invalid input query string"))
+    }
+  }
 }
 
 object SearchController {
 
   type Agg = Map[String, Any]
+  type HighLights = Map[String, Map[String, Seq[String]]]
 
   def fromCount(bucket: String, aggs: Agg): Int = {
     val buckets = aggs.get(bucket).asInstanceOf[Option[Map[String, Int]]]

@@ -38,8 +38,9 @@ trait WithMemberIndex extends DockerTests {
             keywordField("eraCommonsID"),
             textField("bio"),
             textField("story"),
-            textField("interests").fields(keywordField("raw"))
-            //        textField("doc.virtualStudies") FIXME
+            textField("interests").fields(keywordField("raw")),
+            nestedField("virtualStudies").fields(keywordField("id"), textField("name").fields(keywordField("raw"))),
+            nestedField("searchableInterests").fields(textField("name").fields(keywordField("raw")))
           )
       )
     }.await
@@ -57,23 +58,26 @@ trait WithMemberIndex extends DockerTests {
 
   //  Can't use Writes of MemberDocument directly (need to remove parameter "_id", need to create a new one...
   //  implicit val MemberIndexable: Indexable[MemberDocument] = (t: MemberDocument) =>  Json.toJson(t).toString()
-  implicit val MemberIndexable: Indexable[MemberDocument] = (t: MemberDocument) => Json.obj(
-    "firstName" -> t.firstName,
-    "lastName" -> t.lastName,
-    "email" -> t.email,
-    "isPublic" -> t.isPublic,
-    "acceptedTerms" -> t.acceptedTerms,
-    "roles" -> t.roles,
-    "title" -> t._title,
-    "institution" -> t.institution,
-    "city" -> t.city,
-    "state" -> t.state,
-    "country" -> t.country,
-    "interests" -> t.interests,
-    "bio"-> t.bio,
-    "story"-> t.story,
-    "undesiredField" -> "undesired"
-  ).toString()
+  implicit val MemberIndexable: Indexable[MemberDocument] = (t: MemberDocument) =>
+    Json.obj(
+      "firstName" -> t.firstName,
+      "lastName" -> t.lastName,
+      "email" -> t.email,
+      "isPublic" -> t.isPublic,
+      "acceptedTerms" -> t.acceptedTerms,
+      "roles" -> t.roles,
+      "title" -> t._title,
+      "institution" -> t.institution,
+      "city" -> t.city,
+      "state" -> t.state,
+      "country" -> t.country,
+      "interests" -> t.interests,
+      "bio" -> t.bio,
+      "story" -> t.story,
+      "searchableInterests" -> t.interests.map(i => Json.obj("name"-> i)),
+      "undesiredField" -> "undesired"
+    ).toString()
+
 
 
   def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)

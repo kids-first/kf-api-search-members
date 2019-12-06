@@ -132,10 +132,31 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
     }
 
   }
-
   "Test /search without token should return 401" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&start=0&end=20"
+    whenReady(wsClient.url(statusUrl).get(), Timeout(Span(10, Seconds))) {
+      response =>
+        response.status mustBe 401
+    }
+  }
+
+  "Test /interests should return list of interests" in {
+    val token = generateToken()
+    val wsClient = app.injector.instanceOf[WSClient]
+    val statusUrl = s"http://localhost:$port/interests?queryString=can"
+    whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
+      response =>
+        response.status mustBe 200
+        response.json mustBe Json.obj(
+          "interests" -> Json.arr("Cancer Brain", "Cancer Brain Left Side")
+        )
+    }
+  }
+
+  "Test /interests without token should return 401" in {
+    val wsClient = app.injector.instanceOf[WSClient]
+    val statusUrl = s"http://localhost:$port/interests?queryString=can"
     whenReady(wsClient.url(statusUrl).get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 401
