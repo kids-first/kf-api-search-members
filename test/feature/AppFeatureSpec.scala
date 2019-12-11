@@ -71,7 +71,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "lastName" -> "Doe",
               "firstName" -> "John",
               "highlight" -> Json.obj(
-                "email" -> Json.arr("<em>jdoeemail@gmail.com</em>"),
                 "bio" -> Json.arr("my Bio bla <em>jdoeemail</em> bla"),
                 "story" -> Json.arr("My Story <em>jdoeemail</em> bla")),
               "city" -> "Montreal",
@@ -80,7 +79,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
-              "email" -> "jdoeemail@gmail.com"
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com")
             )
           )
         )
@@ -125,7 +124,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
-              "email" -> "jdoeemail@gmail.com"
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com")
             )
           )
         )
