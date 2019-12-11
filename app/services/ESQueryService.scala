@@ -83,7 +83,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .from(qf.start)
       .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
-      .sourceInclude("firstName", "lastName", "email", "roles", "title", "institution", "city", "state", "country", "interests")
+      .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests")
       .bool {
         queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
       }
@@ -98,7 +98,6 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         highlight("city"),
         highlight("state"),
         highlight("country"),
-        highlight("email"),
         highlight("bio"),
         highlight("story"))
     logger.warn(s"ES Query = ${client.show(highlightedQuery)}")

@@ -79,10 +79,11 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
 
     result.foreach {
       r =>
-        r.sourceAsMap.keys shouldNot contain("undesiredField")
-        r.sourceAsMap.keys should contain theSameElementsAs Seq("firstName",
+        r.sourceAsMap.keys shouldNot contain("undesiredField", "email")
+        r.sourceAsMap.keys should contain theSameElementsAs Seq(
+          "hashedEmail",
+          "firstName",
           "lastName",
-          "email",
           "roles",
           "title",
           "institution",

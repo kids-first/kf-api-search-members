@@ -25,6 +25,7 @@ trait WithMemberIndex extends DockerTests {
             textField("firstName").fields(keywordField("raw")),
             textField("lastName").fields(keywordField("raw")),
             keywordField("email"),
+            keywordField("hashedEmail"),
             textField("institutionalEmail"),
             keywordField("acceptedTerms"),
             booleanField("isPublic"),
@@ -63,6 +64,7 @@ trait WithMemberIndex extends DockerTests {
       "firstName" -> t.firstName,
       "lastName" -> t.lastName,
       "email" -> t.email,
+      "hashedEmail" -> t.email.map(e => md5HashString(e)),
       "isPublic" -> t.isPublic,
       "acceptedTerms" -> t.acceptedTerms,
       "roles" -> t.roles,
@@ -83,4 +85,14 @@ trait WithMemberIndex extends DockerTests {
   def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)
 
   private val IndexName = "member"
+
+  def md5HashString(s: String): String = {
+    import java.security.MessageDigest
+    import java.math.BigInteger
+    val md = MessageDigest.getInstance("MD5")
+    val digest = md.digest(s.getBytes)
+    val bigInt = new BigInteger(1,digest)
+    val hashedString = bigInt.toString(16)
+    hashedString
+  }
 }
