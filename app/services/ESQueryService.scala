@@ -5,7 +5,7 @@ import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
 import com.sksamuel.elastic4s.searches.aggs.TermsAggregationDefinition
-import com.sksamuel.elastic4s.searches.queries.matches.MatchQueryDefinition
+import com.sksamuel.elastic4s.searches.queries.matches.{MatchQueryDefinition, ZeroTermsQuery}
 import com.sksamuel.elastic4s.searches.queries.{BoolQueryDefinition, QueryDefinition}
 import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
 import com.sksamuel.exts.Logging
@@ -128,16 +128,17 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   private def matchQueryString(qf: QueryFilter) = {
     Seq(
-      wildcardQuery("interests", s"*${qf.queryString}*"),
-      matchPhrasePrefixQuery("firstName", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("lastName", s"${qf.queryString}").boost(2),
-      matchPhrasePrefixQuery("institution", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("city", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("state", s"${qf.queryString}"),
-      matchPhrasePrefixQuery("country", s"${qf.queryString}"),
-      wildcardQuery("email", s"*${qf.queryString}*"),
-      wildcardQuery("bio", s"*${qf.queryString}*"),
-      wildcardQuery("story", s"*${qf.queryString}*")
+      multiMatchQuery(qf.queryString)
+        .zeroTermsQuery(ZeroTermsQuery.ALL)
+        .fields("firstName",
+          "lastName^5",
+          "interests",
+          "institution",
+          "city",
+          "state",
+          "country",
+          "bio",
+          "story")
     )
   }
 
