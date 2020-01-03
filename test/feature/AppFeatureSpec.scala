@@ -17,11 +17,11 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   override def beforeAll(): Unit = {
 
     val members = Seq(
-      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain"), bio = Some("my Bio bla jdoeemail bla"), story = Some("My Story jdoeemail bla")),
+      MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain"), bio = Some("my Bio bla john bla"), story = Some("My Story john bla")),
       MemberDocument(_id = "a2", firstName = "Jane", lastName = "River", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("community"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
-      MemberDocument(_id = "a3", firstName = "Jean", lastName = "Gray", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain Left Side")),
+      MemberDocument(_id = "a3", firstName = "John", lastName = "Gray", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain Left Side")),
       MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("research"), interests = List("Cancer Brain")),
-      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false, roles = List("research"))
+      MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false, roles = List("community"))
     )
     populateIndex(members)
 
@@ -43,7 +43,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=jdoeemail&role=research&start=0&end=20&interest=Cancer%20Brain"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -61,7 +61,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "research" -> 1,
               "patient" -> 0,
               "health" -> 0,
-              "community" -> 1
+              "community" -> 0
             )
           ),
           "publicMembers" -> Json.arr(
@@ -71,15 +71,17 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "lastName" -> "Doe",
               "firstName" -> "John",
               "highlight" -> Json.obj(
-                "bio" -> Json.arr("my Bio bla <em>jdoeemail</em> bla"),
-                "story" -> Json.arr("My Story <em>jdoeemail</em> bla")),
+                "firstName" -> Json.arr("<em>John</em>"),
+                "bio" -> Json.arr("my Bio bla <em>john</em> bla"),
+                "story" -> Json.arr("My Story <em>john</em> bla")),
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com"),
               "city" -> "Montreal",
               "roles" -> Json.arr("research"),
               "state" -> "Quebec",
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
-              "hashedEmail" -> md5HashString("jdoeemail@gmail.com")
+
             )
           )
         )
