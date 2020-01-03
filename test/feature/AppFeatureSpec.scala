@@ -61,7 +61,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "research" -> 1,
               "patient" -> 0,
               "health" -> 0,
-              "community" -> 0
+              "community" -> 1
             )
           ),
           "publicMembers" -> Json.arr(

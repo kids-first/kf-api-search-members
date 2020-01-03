@@ -1,5 +1,6 @@
 package utils
 
+import com.sksamuel.elastic4s.analyzers.{CustomAnalyzerDefinition, EdgeNGramTokenFilter, LowercaseTokenFilter, StandardTokenizer}
 import com.sksamuel.elastic4s.http.HttpClient
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
@@ -17,35 +18,41 @@ trait WithMemberIndex extends DockerTests {
     esClient.execute {
       deleteIndex(IndexName)
     }.await
-
-    esClient.execute {
-      createIndex(IndexName).mappings(
-        mapping(IndexName)
-          .fields(
-            textField("firstName").fields(keywordField("raw")),
-            textField("lastName").fields(keywordField("raw")),
-            keywordField("email"),
-            keywordField("hashedEmail"),
-            textField("institutionalEmail"),
-            keywordField("acceptedTerms"),
-            booleanField("isPublic"),
-            keywordField("roles"),
-            keywordField("title"),
-            textField("jobTitle").fields(keywordField("raw")),
-            textField("institution").fields(keywordField("raw")),
-            textField("city").fields(keywordField("raw")),
-            textField("state").fields(keywordField("raw")),
-            textField("country").fields(keywordField("raw")),
-            keywordField("eraCommonsID"),
-            textField("bio"),
-            textField("story"),
-            textField("interests").fields(keywordField("raw")),
-            nestedField("virtualStudies").fields(keywordField("id"), textField("name").fields(keywordField("raw"))),
-            nestedField("searchableInterests").fields(textField("name").fields(keywordField("raw")))
-          )
+val createQuery = createIndex(IndexName)
+  .mappings(
+    mapping(IndexName)
+      .fields(
+        textField("firstName").analyzer("autocomplete").fields(keywordField("raw")),
+        textField("lastName").analyzer("autocomplete").fields(keywordField("raw")),
+        keywordField("email"),
+        keywordField("hashedEmail"),
+        textField("institutionalEmail"),
+        keywordField("acceptedTerms"),
+        booleanField("isPublic"),
+        keywordField("roles"),
+        keywordField("title"),
+        textField("jobTitle").analyzer("autocomplete").fields(keywordField("raw")),
+        textField("institution").analyzer("autocomplete").fields(keywordField("raw")),
+        textField("city").analyzer("autocomplete").fields(keywordField("raw")),
+        textField("state").analyzer("autocomplete").fields(keywordField("raw")),
+        textField("country").analyzer("autocomplete").fields(keywordField("raw")),
+        keywordField("eraCommonsID"),
+        textField("bio").analyzer("autocomplete"),
+        textField("story").analyzer("autocomplete"),
+        textField("interests").analyzer("autocomplete").fields(keywordField("raw")),
+        nestedField("virtualStudies").fields(keywordField("id"), textField("name").analyzer("autocomplete").fields(keywordField("raw"))),
+        nestedField("searchableInterests").fields(textField("name").analyzer("autocomplete").fields(keywordField("raw")))
       )
-    }.await
+  ).analysis(CustomAnalyzerDefinition(
+  "autocomplete",
+  StandardTokenizer,
+  LowercaseTokenFilter,
+  EdgeNGramTokenFilter("edge_ngram", minGram = Some(1), maxGram = Some(20), side = Some("front"))
+))
+    logger.warn(esClient.show(createQuery))
+   val createResult =  esClient.execute(createQuery).await
 
+    createResult.left.map(f => throw new IllegalStateException(s"Error during index creation $f"))
 
     esClient.execute(
       bulk(
@@ -76,10 +83,9 @@ trait WithMemberIndex extends DockerTests {
       "interests" -> t.interests,
       "bio" -> t.bio,
       "story" -> t.story,
-      "searchableInterests" -> t.interests.map(i => Json.obj("name"-> i)),
+      "searchableInterests" -> t.interests.map(i => Json.obj("name" -> i)),
       "undesiredField" -> "undesired"
     ).toString()
-
 
 
   def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)
@@ -87,11 +93,13 @@ trait WithMemberIndex extends DockerTests {
   private val IndexName = "member"
 
   def md5HashString(s: String): String = {
-    import java.security.MessageDigest
+
     import java.math.BigInteger
+    import java.security.MessageDigest
+
     val md = MessageDigest.getInstance("MD5")
     val digest = md.digest(s.getBytes)
-    val bigInt = new BigInteger(1,digest)
+    val bigInt = new BigInteger(1, digest)
     val hashedString = bigInt.toString(16)
     hashedString
   }

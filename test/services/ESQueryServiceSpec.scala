@@ -18,7 +18,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
     val members = Seq(
       MemberDocument("a1", firstName = "Brian", lastName = "Doe", email = Some("bdoeemail@gmail.com"), roles = List("community", "research"), _title = Some("Dr.")),
       MemberDocument("a2", firstName = "Brian", lastName = "Fish", email = Some("bdoeemail@gmail.com"), roles = List("patient"), _title = Some("M.")),
-      MemberDocument("b1", firstName = "BrianC", lastName = "Henry", email = Some("bdoeemail@gmail.com"), roles = List("community"), _title = Some("Dr."), interests = List("cancer")),
+      MemberDocument("b1", firstName = "John", lastName = "Henry", email = Some("bdoeemail@gmail.com"), roles = List("community"), _title = Some("Dr."), interests = List("cancer")),
       MemberDocument("b2", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@gmail.com"), interests = List("cancer", "pandas")),
       MemberDocument("c1", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@yahoo.com"), roles = List("community"), interests = List("cancer")),
       MemberDocument("c2", firstName = "Paul", lastName = "Brian", email = Some("dbrianemail@yahoo.com")),
