@@ -1,6 +1,7 @@
 package services
 
 import com.sksamuel.elastic4s.ElasticsearchClientUri
+import com.sksamuel.elastic4s.analyzers.StandardAnalyzer
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
@@ -130,6 +131,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     Seq(
       multiMatchQuery(qf.queryString)
         .zeroTermsQuery(ZeroTermsQuery.ALL)
+        .analyzer(StandardAnalyzer)
         .fields("firstName",
           "lastName^5",
           "interests",

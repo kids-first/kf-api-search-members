@@ -1,6 +1,6 @@
 package utils
 
-import com.sksamuel.elastic4s.analyzers.{CustomAnalyzerDefinition, EdgeNGramTokenFilter, LowercaseTokenFilter, StandardTokenizer}
+import com.sksamuel.elastic4s.analyzers.{CustomAnalyzerDefinition, EdgeNGramTokenFilter, KeywordTokenizer, LowercaseTokenFilter, StandardTokenizer}
 import com.sksamuel.elastic4s.http.HttpClient
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
