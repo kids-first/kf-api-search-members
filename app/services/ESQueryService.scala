@@ -19,7 +19,7 @@ import scala.concurrent.Future
 
 @Singleton
 class ESQueryService @Inject()(configuration: Configuration) extends Logging {
-
+  private val MAX_INTERESTS_STATS = 100
   private val host = configuration.get[String]("elasticsearch.host")
   private val ports = configuration.get[Seq[Int]]("elasticsearch.ports")
   private val hosts_ports = ports.map(p => (host, p)).toList
@@ -101,7 +101,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
         highlight("country"),
         highlight("bio"),
         highlight("story"))
-    logger.warn(s"ES Query = ${client.show(highlightedQuery)}")
+    logger.debug(s"ES Query = ${client.show(highlightedQuery)}")
     val resp = client.execute {
       highlightedQuery
     }
@@ -121,7 +121,23 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
           )
       )
 
-    logger.warn(s"ES QueryINT = ${client.show(q)}")
+    logger.debug(s"ES QueryINT = ${client.show(q)}")
+
+    client.execute(q)
+
+  }
+
+  def generateInterestsStatsQuery(size: Option[Int]): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+    val q = search("member")
+      .size(0)
+      .aggregations(
+        nestedAggregation("all", "searchableInterests")
+          .subAggregations(
+            TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = size.orElse(Some(MAX_INTERESTS_STATS)))
+          )
+      )
+
+    logger.debug(s"ES QueryINT = ${client.show(q)}")
 
     client.execute(q)
 

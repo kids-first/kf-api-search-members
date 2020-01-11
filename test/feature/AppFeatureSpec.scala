@@ -164,5 +164,36 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
     }
   }
 
+  "Test /interests_stats should return list of interests" in {
+    val token = generateToken()
+    val wsClient = app.injector.instanceOf[WSClient]
+    val statusUrl = s"http://localhost:$port/interests_stats"
+    whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
+      response =>
+        response.status mustBe 200
+        response.json mustBe Json.obj(
+          "interests" -> Json.arr(
+            Json.obj("name"-> "Cancer Brain", "count" -> 3),
+            Json.obj("name"-> "Cancer Brain Left Side", "count" -> 1)
+          )
+        )
+    }
+  }
+
+  "Test /interests_stats with a size should return list of interests" in {
+    val token = generateToken()
+    val wsClient = app.injector.instanceOf[WSClient]
+    val statusUrl = s"http://localhost:$port/interests_stats?size=1"
+    whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
+      response =>
+        response.status mustBe 200
+        response.json mustBe Json.obj(
+          "interests" -> Json.arr(
+            Json.obj("name"-> "Cancer Brain", "count" -> 3),
+            Json.obj("name"-> "Others", "count" -> 1)
+          )
+        )
+    }
+  }
 
 }
