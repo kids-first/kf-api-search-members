@@ -118,6 +118,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
               matchQuery("searchableInterests.name", qs)
                 .zeroTermsQuery("all")
                 .analyzer(StandardAnalyzer)
+                .operator("and")
             ))
               .subAggregations(
                 TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = Some(10))
