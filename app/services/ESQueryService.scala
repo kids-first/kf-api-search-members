@@ -114,7 +114,11 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .aggregations(
         nestedAggregation("all", "searchableInterests")
           .subAggregations(
-            filterAgg("filtered", boolQuery().should(wildcardQuery("searchableInterests.name", s"*$qs*")))
+            filterAgg("filtered", boolQuery().should(
+              matchQuery("searchableInterests.name", qs)
+                .zeroTermsQuery("all")
+                .analyzer(StandardAnalyzer)
+            ))
               .subAggregations(
                 TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = Some(10))
               )

@@ -18,9 +18,9 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
     val members = Seq(
       MemberDocument("a1", firstName = "Brian", lastName = "Doe", email = Some("bdoeemail@gmail.com"), roles = List("community", "research"), _title = Some("Dr.")),
       MemberDocument("a2", firstName = "Brian", lastName = "Fish", email = Some("bdoeemail@gmail.com"), roles = List("patient"), _title = Some("M.")),
-      MemberDocument("b1", firstName = "John", lastName = "Henry", email = Some("bdoeemail@gmail.com"), roles = List("community"), _title = Some("Dr."), interests = List("cancer")),
-      MemberDocument("b2", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@gmail.com"), interests = List("cancer", "pandas")),
-      MemberDocument("c1", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@yahoo.com"), roles = List("community"), interests = List("cancer")),
+      MemberDocument("b1", firstName = "John", lastName = "Henry", email = Some("bdoeemail@gmail.com"), roles = List("community"), _title = Some("Dr."), interests = List("cancer brain")),
+      MemberDocument("b2", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@gmail.com"), interests = List("cancer brain", "pandas")),
+      MemberDocument("c1", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@yahoo.com"), roles = List("community"), interests = List("cancer brain")),
       MemberDocument("c2", firstName = "Paul", lastName = "Brian", email = Some("dbrianemail@yahoo.com")),
       MemberDocument("private_member", "Doe", "Brian", Some("dbrianemail@gmail.com"), isPublic = false),
       MemberDocument("not_accepted_terms", "Doe", "Brian", Some("dbrianemail@yahoo.com"), acceptedTerms = false)
@@ -139,9 +139,27 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
         "doc_count_error_upper_bound" -> 0,
         "sum_other_doc_count" -> 0,
         "buckets" -> List(
-          Map("key" -> "cancer", "doc_count" -> 2),
+          Map("key" -> "cancer brain", "doc_count" -> 2),
           Map("key" -> "pandas", "doc_count" -> 1)
         )
+      )
+    )
+  }
+
+  "generateInterestsQuery" should "return the aggregate count for interests" in {
+    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsQuery("cancer br").await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    result should contain theSameElementsAs Map(
+      "all" -> Map(
+        "doc_count" -> 4,
+        "filtered" ->
+          Map(
+            "doc_count" -> 3,
+            "searchableInterests" -> Map(
+              "doc_count_error_upper_bound" -> 0,
+              "sum_other_doc_count" -> 0,
+              "buckets" -> List(Map("key" -> "cancer brain", "doc_count" -> 3))
+            )
+          )
       )
     )
   }
