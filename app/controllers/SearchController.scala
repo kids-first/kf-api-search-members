@@ -23,7 +23,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
     ret
   }: _*)
 
-  def search(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] =>
+  def search(): Action[AnyContent] = authAction.async { implicit request =>
 
     val qs: QueryString = request.queryString
 
@@ -34,8 +34,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
           q"start=${int(start)}" ?
           q"end=${int(end)}" ?
           q_s"role=$roles" ?
-          q_s"interest=$interests" =>
-          Some(QueryFilter(queryString, start, end, roles, interests))
+          q_s"interest=$interests" ?
+          q_o"qAllMembers=$qAllMembers" =>
+          Some(QueryFilter(queryString, start, end, roles, interests, qAllMembers match {
+            case Some(s) => s.equalsIgnoreCase("true")
+            case None => false
+          }))
         case _ =>
           None
       }
@@ -43,9 +47,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
     queryFilter.unapply(qs) match {
       case Some(qf) =>
-        val resultsF = esQueryService.generateFilterQueries(qf)
-        val rolesAggsF = esQueryService.generateRolesAggQuery(qf)
-        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf)
+        val resultsF = esQueryService.generateFilterQueries(qf, request.isAdmin)
+        val rolesAggsF = esQueryService.generateRolesAggQuery(qf, request.isAdmin)
+        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf, request.isAdmin)
         val countsF = esQueryService.generateCountQueries(qf)
 
         val all: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
