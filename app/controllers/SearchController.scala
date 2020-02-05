@@ -37,7 +37,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
           q_s"interest=$interests" ?
           q_o"qAllMembers=$qAllMembers" =>
           Some(QueryFilter(queryString, start, end, roles, interests, qAllMembers match {
-            case Some(s) => s.equalsIgnoreCase("true")
+            case Some(s) => s.equalsIgnoreCase("true") && request.isAdmin
             case None => false
           }))
         case _ =>
@@ -47,9 +47,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
     queryFilter.unapply(qs) match {
       case Some(qf) =>
-        val resultsF = esQueryService.generateFilterQueries(qf, request.isAdmin)
-        val rolesAggsF = esQueryService.generateRolesAggQuery(qf, request.isAdmin)
-        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf, request.isAdmin)
+        val resultsF = esQueryService.generateFilterQueries(qf)
+        val rolesAggsF = esQueryService.generateRolesAggQuery(qf)
+        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf)
         val countsF = esQueryService.generateCountQueries(qf)
 
         val all: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {

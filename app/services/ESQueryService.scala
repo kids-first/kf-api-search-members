@@ -30,7 +30,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   private val client = HttpClient(elasticsearchClientUri)
 
-  private val qfSelect = (isAdmin: Boolean, qf: QueryFilter) => if (isAdmin && qf.qAllMembers) {
+  private val qfSelect = (qf: QueryFilter) => if (qf.qAllMembers) {
     queryFilter(qf, matchQuery("acceptedTerms", true))
   } else {
     queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
@@ -54,11 +54,11 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateRolesAggQuery(qf: QueryFilter, isAdmin: Boolean = false): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateRolesAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
     val q = search("member")
       .size(0)
       .bool {
-        qfSelect(isAdmin, qf.copy(roles = Nil))
+        qfSelect(qf.copy(roles = Nil))
       }
       .aggregations(
         filterAgg("research", termQuery("roles", "research")),
@@ -71,11 +71,11 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateInterestsAggQuery(qf: QueryFilter, isAdmin: Boolean = false): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateInterestsAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
     val q = search("member")
       .size(0)
       .bool {
-        qfSelect(isAdmin, qf.copy(interests = Nil))
+        qfSelect(qf.copy(interests = Nil))
       }
       .aggregations(
         TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
@@ -85,7 +85,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateFilterQueries(qf: QueryFilter, isAdmin: Boolean = false): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
 
     val q = search("member")
       .from(qf.start)
@@ -93,7 +93,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
       .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests")
       .bool {
-        qfSelect(isAdmin, qf)
+        qfSelect(qf)
       }
 
     val highlightedQuery = if (qf.queryString.isEmpty) q else
