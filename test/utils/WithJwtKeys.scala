@@ -21,8 +21,8 @@ trait WithJwtKeys {
     }
   }
 
-  def generateToken(expiredIn: Int = 1000, issuedAt: Int = 0, id: String = "12345", by: String = "ego", about: String = "12345"): String = {
-    val claim = JwtClaim().by(by).expiresIn(expiredIn).withId(id).issuedAt(issuedAt).about(about)
+  def generateToken(expiredIn: Int = 1000, issuedAt: Int = 0, id: String = "12345", by: String = "ego", about: String = "12345", content: String = ""): String = {
+    val claim = JwtClaim().by(by).expiresIn(expiredIn).withId(id).issuedAt(issuedAt).about(about).withContent(content)
     JwtJson.encode(claim, privateKey, JwtAlgorithm.RS256)
   }
 }
