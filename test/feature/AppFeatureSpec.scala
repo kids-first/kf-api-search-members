@@ -8,7 +8,7 @@ import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
+import play.api.libs.json.{JsNull, JsObject, Json}
 import play.api.libs.ws.WSClient
 import utils.{MemberDocument, WithJwtKeys, WithMemberIndex}
 
@@ -20,7 +20,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
       MemberDocument(_id = "a1", firstName = "John", lastName = "Doe", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain"), bio = Some("my Bio bla john bla"), story = Some("My Story john bla")),
       MemberDocument(_id = "a2", firstName = "Jane", lastName = "River", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("community"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain")),
       MemberDocument(_id = "a3", firstName = "John", lastName = "Gray", email = Some("jdoeemail@gmail.com"), institution = Some("CHUSJ"), country = Some("Canada"), roles = List("research"), _title = Some("Dr."), city = Some("Montreal"), state = Some("Quebec"), interests = List("Cancer Brain Left Side")),
-      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("research"), interests = List("Cancer Brain")),
+      MemberDocument("private_member", "Doe", "John", Some("jdoeemail@gmail.com"), isPublic = false, roles = List("research"), interests = List("Cancer Brain", "Private Stuff")),
       MemberDocument("not_accepted_terms", "Doe", "John", Some("jdoeemail@yahoo.com"), acceptedTerms = false, roles = List("community"))
     )
     populateIndex(members)
@@ -43,7 +43,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val token = generateToken()
     val wsClient = app.injector.instanceOf[WSClient]
-    val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain"
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain&qAllMembers=true"
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -83,6 +83,79 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "title" -> "Dr.",
 
             )
+          )
+        )
+    }
+
+  }
+
+  "Test /search for all members as ADMIN should return results" in {
+    val tokenContentAdmin: JsObject = Json.obj(
+    "user" -> Json.obj(
+    "firstName" -> "Roger",
+    "lastName" -> "Rabbit",
+    "roles" -> Seq("USER", "ADMIN")
+      )
+    )
+    val token = generateToken(content = Json.stringify(tokenContentAdmin))
+    val wsClient = app.injector.instanceOf[WSClient]
+    val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain&qAllMembers=true"
+    whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
+      response =>
+        response.status mustBe 200
+        response.json mustBe Json.obj(
+          "count" -> Json.obj(
+            "total" -> 2,
+            "public" -> 1,
+            "private" -> 1,
+            "interests" -> Json.obj(
+              "Cancer Brain" -> 2,
+              "Cancer Brain Left Side" -> 1,
+              "Private Stuff" -> 1
+            ),
+            "interestsOthers" -> 0,
+            "roles" -> Json.obj(
+              "research" -> 2,
+              "patient" -> 0,
+              "health" -> 0,
+              "community" -> 0
+            )
+          ),
+          "publicMembers" -> Json.arr(
+            Json.obj(
+              "institution" -> JsNull,
+              "country" -> JsNull,
+              "city" -> JsNull,
+              "state" -> JsNull,
+              "title" -> JsNull,
+              "lastName" -> "John",
+              "firstName" -> "Doe",
+              "highlight" -> Json.obj(
+                "lastName" -> Json.arr("<em>John</em>"),
+              ),
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com"),
+              "roles" -> Json.arr("research"),
+              "_id" -> "private_member",
+              "interests" -> Json.arr("Cancer Brain", "Private Stuff")
+            ),
+            Json.obj(
+              "institution" -> "CHUSJ",
+              "country" -> "Canada",
+              "lastName" -> "Doe",
+              "firstName" -> "John",
+              "highlight" -> Json.obj(
+                "firstName" -> Json.arr("<em>John</em>"),
+                "bio" -> Json.arr("my Bio bla <em>john</em> bla"),
+                "story" -> Json.arr("My Story <em>john</em> bla")),
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com"),
+              "city" -> "Montreal",
+              "roles" -> Json.arr("research"),
+              "state" -> "Quebec",
+              "_id" -> "a1",
+              "interests" -> Json.arr("Cancer Brain"),
+              "title" -> "Dr.",
+            )
+
           )
         )
     }
@@ -174,7 +247,8 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
         response.json mustBe Json.obj(
           "interests" -> Json.arr(
             Json.obj("name"-> "Cancer Brain", "count" -> 3),
-            Json.obj("name"-> "Cancer Brain Left Side", "count" -> 1)
+            Json.obj("name"-> "Cancer Brain Left Side", "count" -> 1),
+            Json.obj("name"-> "Private Stuff", "count" -> 1),
           )
         )
     }
@@ -190,7 +264,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
         response.json mustBe Json.obj(
           "interests" -> Json.arr(
             Json.obj("name"-> "Cancer Brain", "count" -> 3),
-            Json.obj("name"-> "Others", "count" -> 1)
+            Json.obj("name"-> "Others", "count" -> 2)
           )
         )
     }

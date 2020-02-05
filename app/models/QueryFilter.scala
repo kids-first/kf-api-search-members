@@ -5,5 +5,6 @@ case class QueryFilter(
                          start: Int,
                          end: Int,
                          roles:Seq[String] = Nil,
-                         interests:Seq[String] = Nil
+                         interests:Seq[String] = Nil,
+                         qAllMembers: Boolean = false
                          )
