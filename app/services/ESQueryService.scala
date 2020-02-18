@@ -91,7 +91,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .from(qf.start)
       .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
-      .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests")
+      .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests", "isPublic")
       .bool {
         qfSelect(qf)
       }
