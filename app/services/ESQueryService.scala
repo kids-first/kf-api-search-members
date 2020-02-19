@@ -33,7 +33,11 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   private val qfSelect = (qf: QueryFilter) => if (qf.qAllMembers) {
     queryFilter(qf, matchQuery("acceptedTerms", true))
   } else {
-    queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isPublic", true))
+    queryFilter(
+      qf,
+      matchQuery("acceptedTerms", true),
+      matchQuery("isPublic", true),
+      matchQuery("isActive", true))
   }
 
 
@@ -41,7 +45,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     val q = search("member")
       .size(0)
       .bool {
-        queryFilter(qf, matchQuery("acceptedTerms", true))
+        queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isActive", true))
       }
       .aggregations(
         filterAgg("public", termQuery("isPublic", true)),
@@ -91,7 +95,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
       .from(qf.start)
       .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
       .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
-      .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests", "isPublic")
+      .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests", "isPublic", "isActive")
       .bool {
         qfSelect(qf)
       }

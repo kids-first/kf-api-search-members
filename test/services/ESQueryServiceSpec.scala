@@ -23,6 +23,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
       MemberDocument("c1", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@yahoo.com"), roles = List("community"), interests = List("cancer brain")),
       MemberDocument("c2", firstName = "Paul", lastName = "Brian", email = Some("dbrianemail@yahoo.com")),
       MemberDocument("private_member", "Doe", "Brian", Some("dbrianemail@gmail.com"), isPublic = false),
+      MemberDocument("not_active_member", "Doe", "Secret", Some("dbrianemail@gmail.com"), isActive = false ),
       MemberDocument("not_accepted_terms", "Doe", "Brian", Some("dbrianemail@yahoo.com"), acceptedTerms = false)
     )
     populateIndex(members)
@@ -76,6 +77,14 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
     }
   }
 
+  it should "return only active members" in {
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Secret", 0, 100)).await.right.get.result.hits.hits.toSeq
+
+    result.foreach {
+      r => r.id shouldNot be("not_active_member")
+    }
+  }
+
   it should "return desired fields" in {
     val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.right.get.result.hits.hits.toSeq
 
@@ -92,7 +101,9 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
           "city",
           "state",
           "country",
-          "interests"
+          "interests",
+          "isPublic",
+          "isActive"
         )
     }
   }

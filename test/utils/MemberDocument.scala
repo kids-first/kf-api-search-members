@@ -7,6 +7,7 @@ case class MemberDocument(
                            email: Option[String],
                            acceptedTerms: Boolean = true,
                            isPublic: Boolean = true,
+                           isActive: Boolean = true,
                            roles: List[String] = Nil,
                            _title: Option[String] = None,
                            institution: Option[String] = None,

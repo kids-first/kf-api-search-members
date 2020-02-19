@@ -81,7 +81,8 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
-
+              "isPublic" -> true,
+              "isActive" -> true
             )
           )
         )
@@ -136,7 +137,9 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "hashedEmail" -> md5HashString("jdoeemail@gmail.com"),
               "roles" -> Json.arr("research"),
               "_id" -> "private_member",
-              "interests" -> Json.arr("Cancer Brain", "Private Stuff")
+              "interests" -> Json.arr("Cancer Brain", "Private Stuff"),
+              "isPublic" -> false,
+              "isActive" -> true
             ),
             Json.obj(
               "institution" -> "CHUSJ",
@@ -154,6 +157,8 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
+              "isPublic" -> true,
+              "isActive" -> true
             )
 
           )
@@ -199,7 +204,9 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "_id" -> "a1",
               "interests" -> Json.arr("Cancer Brain"),
               "title" -> "Dr.",
-              "hashedEmail" -> md5HashString("jdoeemail@gmail.com")
+              "hashedEmail" -> md5HashString("jdoeemail@gmail.com"),
+              "isPublic" -> true,
+              "isActive" -> true
             )
           )
         )
