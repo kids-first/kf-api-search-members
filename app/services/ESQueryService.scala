@@ -45,11 +45,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     val q = search("member")
       .size(0)
       .bool {
-        if(qf.qAllMembers){
-          queryFilter(qf, matchQuery("acceptedTerms", true))
-        } else {
-          queryFilter(qf, matchQuery("acceptedTerms", true), matchQuery("isActive", true))
-        }
+        queryFilter(qf, matchQuery("acceptedTerms", true))
       }
       .aggregations(
         filterAgg("public", termQuery("isPublic", true)),
