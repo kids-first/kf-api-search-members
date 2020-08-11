@@ -4,7 +4,7 @@ ecs_service_type_1_standard {
     environments = "dev,qa,prd"
     docker_image_type = "debian"
     entrypoint_command = "java -Dhttp.port=80 -jar kf-search-members.jar" 
-    deploy_scripts_version = "master"
+    deploy_scripts_version = "feature/custom-build-command"
     quick_deploy = "true"
     internal_app = "false"
     external_config_repo = "false"
