@@ -14,6 +14,6 @@ ecs_service_type_1_standard {
     memory_task                = "4096"
     health_check_path = "/"
     pre_build_command = "docker run --rm -v \$(pwd):/app/kf-api-search-members --user \$(id -u):\$(id -g) -v ~/:/app -w /app/kf-api-search-members hseeberger/scala-sbt:11.0.4_1.3.2_2.12.10 sbt -Duser.home=/app \"set test in assembly := {}\" clean assembly"
-    dependencies = "ecr,postgres_rds"
+    dependencies = "ecr"
     friendly_dns_name = "search-members-api"
 }
