@@ -3,7 +3,7 @@ ecs_service_type_1_standard {
     projectName = "kf-api-search-members"
     environments = "dev,qa,prd"
     docker_image_type = "debian"
-    entrypoint_command = "java -Dhttp.port=80 -jar kf-search-members.jar" 
+    entrypoint_command = "java -Dhttp.port=80 -jar /app/kf-search-members.jar" 
     quick_deploy = "true"
     internal_app = "false"
     container_port = "80"
