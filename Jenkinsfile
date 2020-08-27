@@ -3,7 +3,7 @@ ecs_service_type_1_standard {
     projectName = "kf-api-search-members"
     environments = "dev,qa,prd"
     docker_image_type = "debian"
-    entrypoint_command = "/app/start_up.sh" 
+    entrypoint_command = "/start_up.sh" 
     quick_deploy = "true"
     internal_app = "false"
     container_port = "80"
