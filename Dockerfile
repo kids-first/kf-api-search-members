@@ -3,8 +3,9 @@ FROM openjdk:11
 WORKDIR /app
 
 COPY target/scala-2.12/kf-search-members.jar .
+COPY start-up.sh .
 
 EXPOSE 80
 
-ENTRYPOINT java -Dhttp.port=80 -jar kf-search-members.jar
+ENTRYPOINT start-up.sh
 
