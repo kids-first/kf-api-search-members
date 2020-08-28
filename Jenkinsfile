@@ -1,6 +1,7 @@
 @Library(value="kids-first/aws-infra-jenkins-shared-libraries", changelog=false) _
 ecs_service_type_1_standard {
     projectName = "kf-api-search-members"
+    ecs_service_type_1_version = "feature/changed-to-entrypoint"
     environments = "dev,qa,prd"
     docker_image_type = "debian"
     entrypoint_command = "java -Dhttp.port=80 -jar /app/kf-search-members.jar"
