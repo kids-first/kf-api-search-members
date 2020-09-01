@@ -16,4 +16,5 @@ ecs_service_type_1_standard {
     pre_build_command = "docker run --rm -v \$(pwd):/app/kf-api-search-members --user \$(id -u):\$(id -g) -v ~/:/app -w /app/kf-api-search-members hseeberger/scala-sbt:11.0.4_1.3.2_2.12.10 sbt -Duser.home=/app \"set test in assembly := {}\" clean assembly"
     dependencies = "ecr"
     friendly_dns_name = "search-members-api"
+    additional_ssl_cert_domain_name = "*.kidsfirstdrc.org"
 }
