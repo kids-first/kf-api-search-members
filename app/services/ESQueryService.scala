@@ -22,10 +22,12 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   private val MAX_INTERESTS_STATS = 100
   private val host = configuration.get[String]("elasticsearch.host")
   private val ports = configuration.get[Seq[Int]]("elasticsearch.ports")
+  private val ssl = configuration.get[String]("elasticsearch.ssl")
   private val hosts_ports = ports.map(p => (host, p)).toList
   private val elasticsearchClientUri = new ElasticsearchClientUri(
     s"elasticsearch://" + hosts_ports.map(h => s"${h._1}:${h._2}").mkString(","),
-    hosts_ports
+    hosts_ports,
+    Map("ssl" -> ssl)
   )
 
   private val client = HttpClient(elasticsearchClientUri)
