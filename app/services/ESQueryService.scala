@@ -12,6 +12,7 @@ import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
 import com.sksamuel.exts.Logging
 import javax.inject.{Inject, Singleton}
 import models.QueryFilter
+import org.elasticsearch.client.RestClient
 import play.api.Configuration
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,8 +22,10 @@ import scala.concurrent.Future
 class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   private val MAX_INTERESTS_STATS = 100
   private val host = configuration.get[String]("elasticsearch.host")
-  private val port = configuration.get[String]("elasticsearch.port")
-  private val elasticsearchClientUri = ElasticsearchClientUri(s"$host:$port")
+  private val port = configuration.get[Int]("elasticsearch.port")
+  private val ssl = host.startsWith("https://").toString
+  private val hostname = host.replace("http://", "").replace("https://", "")
+  private val elasticsearchClientUri = new ElasticsearchClientUri(s"$hostname:$port", List((hostname, port)), Map("ssl" -> ssl))
 
   private val client = HttpClient(elasticsearchClientUri)
 
