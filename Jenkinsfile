@@ -8,6 +8,7 @@ ecs_service_type_1_standard {
     quick_deploy = "true"
     internal_app = "false"
     container_port = "80"
+    create_sqs = "1"
     vcpu_container             = "2048"
     memory_container           = "4096"
     vcpu_task                  = "2048"
