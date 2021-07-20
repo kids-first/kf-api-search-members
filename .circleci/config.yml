@@ -8,6 +8,10 @@ jobs:
         environment:
             discovery.type: "single-node"
             cluster.name:  "elasticsearch"
+      - image: quay.io/keycloak/keycloak:13.0.1
+        environment:
+          KEYCLOAK_USER: "admin"
+          KEYCLOAK_PASSWORD: "admin"
     steps:
       - checkout
       - restore_cache:

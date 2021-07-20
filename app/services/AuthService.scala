@@ -1,33 +1,49 @@
 package services
 
+import org.keycloak.RSATokenVerifier
+import org.keycloak.representations.AccessToken
+import play.api.{Configuration, Logging}
+
+import java.security.PublicKey
 import java.time.Clock
-
 import javax.inject.Inject
-import pdi.jwt.{JwtAlgorithm, JwtClaim, JwtJson}
-import play.api.Configuration
-import utils.Control.using
+import scala.concurrent.{ExecutionContext, Future}
 
-import scala.io.Source
-import scala.util.{Failure, Success, Try}
-
-class AuthService @Inject()(config: Configuration) {
+class AuthService @Inject()(config: Configuration)(implicit ec: ExecutionContext) extends Logging {
 
   implicit val clock: Clock = Clock.systemUTC
 
-  private val key = using(Source.fromURL(config.get[String]("jwt.public_key.url"))) { source => source.mkString }
+  val keycloakRealmInfoUrl = config.get[String]("keycloak.realm_info_url")
 
-  def validateJwt(token: String): Try[JwtClaim] = for {
-    claims <- JwtJson.decode(token, key, Seq(JwtAlgorithm.RS256))
-    _ <- validateClaims(claims)
-  } yield claims
+  def verifyToken(token: String, publicKeys: Future[Map[String, PublicKey]]): Future[Option[AccessToken]] = {
+    try {
+      val tokenVerifier = RSATokenVerifier.create(token).realmUrl(keycloakRealmInfoUrl)
+      val tokenVerifierHeader = tokenVerifier.getHeader
+      for {
+        publicKey <- publicKeys.map(_.get(tokenVerifierHeader.getKeyId))
+      } yield publicKey match {
+        case Some(pk) =>
+          try {
+            val token = tokenVerifier.publicKey(pk).verify().getToken
+            Some(token)
+          } catch {
+            case e: Exception => {
+              logger.error(e.toString)
+              None
+            }
+          }
 
-  private val validateClaims = (claims: JwtClaim) =>
-    if (claims.isValid(clock)) {
-      Success(claims)
-    } else {
-      Failure(new Exception("The JWT did not pass validation"))
+        case None =>
+          logger.warn(s"no public key found for id ${tokenVerifierHeader.getKeyId}")
+          None
+      }
+    } catch {
+      case e: Exception => {
+        logger.error(e.toString)
+        Future.successful(None)
+      }
     }
-
+  }
 }
 
 
