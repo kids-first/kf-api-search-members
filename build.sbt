@@ -5,7 +5,7 @@ version := "1.0-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.12.13"
+scalaVersion := "2.12.10"
 
 val keycloakVersion = "4.0.0.Final"
 val elastic4sVersion = "6.1.4"
