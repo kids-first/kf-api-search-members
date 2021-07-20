@@ -5,11 +5,13 @@ version := "1.0-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.12.10"
+scalaVersion := "2.12.13"
 
+val keycloakVersion = "4.0.0.Final"
 val elastic4sVersion = "6.1.4"
 
 libraryDependencies += guice
+libraryDependencies += ws
 
 libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.0.8",
@@ -28,6 +30,8 @@ libraryDependencies ++= Seq(
   "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elastic4sVersion % Test
     exclude("commons-logging", "commons-logging")
     exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
+
+  "org.keycloak"      % "keycloak-core"         % keycloakVersion,
 
   "com.auth0" % "jwks-rsa" % "0.8.3",
   "com.pauldijou" %% "jwt-play" % "4.0.0",
