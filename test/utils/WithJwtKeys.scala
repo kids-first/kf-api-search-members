@@ -3,7 +3,6 @@ package utils
 import org.keycloak.jose.jws.AlgorithmType
 import pdi.jwt.{JwtAlgorithm, JwtClaim, JwtHeader, JwtJson}
 import play.api.libs.ws.{WSClient, WSResponse}
-import services.KeyData
 
 import java.net.URL
 import java.security.spec.X509EncodedKeySpec

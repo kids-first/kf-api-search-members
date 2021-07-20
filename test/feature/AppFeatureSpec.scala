@@ -3,12 +3,12 @@ package feature
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Seconds, Span}
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.{Application}
+import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsNull, Json}
+import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import utils.{MemberDocument, WithJwtKeys, WithMemberIndex}
 
@@ -16,6 +16,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutures with WithJwtKeys with BeforeAndAfterAll with WithMemberIndex {
 
+  implicit val defaultPatience =
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
+    
+  var token: String = ""
   override def beforeAll(): Unit = {
 
     val members = Seq(
@@ -27,6 +31,8 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
     )
     populateIndex(members)
 
+    val wsClient = app.injector.instanceOf[WSClient]
+    token = getKeycloakToken(wsClient).futureValue
   }
 
   override def fakeApplication(): Application = new GuiceApplicationBuilder().configure(Map(
@@ -48,7 +54,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search should return results" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain&qAllMembers=true"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         logger.error(s"Response ${response.status}")
@@ -98,7 +103,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search for all members as USER should return only public and accepted terms and active results" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/searchmembers?queryString=john&role=research&start=0&end=20&interest=Cancer%20Brain&qAllMembers=true"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -148,7 +152,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /search with empty queryString should return results with highlights empty" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/searchmembers?queryString=&start=0&end=20&role=research&interest=Cancer%20Brain"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -203,7 +206,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /interests should return list of interests" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/interests?queryString=can"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -225,7 +227,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /interests_stats should return list of interests" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/interests_stats"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
@@ -242,7 +243,6 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   "Test /interests_stats with a size should return list of interests" in {
     val wsClient = app.injector.instanceOf[WSClient]
     val statusUrl = s"http://localhost:$port/interests_stats?size=1"
-    val token = getKeycloakToken(wsClient).futureValue
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
