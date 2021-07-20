@@ -10,21 +10,13 @@ jobs:
             cluster.name:  "elasticsearch"
       - image: quay.io/keycloak/keycloak:13.0.1
         environment:
-          KEYCLOAK_USER: "admin"
-          KEYCLOAK_PASSWORD: "admin"
+            KEYCLOAK_USER: "admin"
+            KEYCLOAK_PASSWORD: "admin"
     steps:
       - checkout
       - restore_cache:
           # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
           key: sbt-cache
-      - run:
-          name: install dockerize
-          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-          environment:
-            DOCKERIZE_VERSION: v0.3.0
-      - run:
-          name: Wait for keycloak
-          command: dockerize -wait tcp://localhost:8080 -timeout 3m
       - run:
           name: Run tests
           command: cat /dev/null | sbt clean test
