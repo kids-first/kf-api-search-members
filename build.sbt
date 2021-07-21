@@ -50,6 +50,7 @@ assemblyMergeStrategy in assembly := {
   case referenceOverrides if referenceOverrides.contains("reference-overrides.conf") =>
     // Keep the content for all reference-overrides.conf files
     MergeStrategy.concat
+  case PathList("javax", "activation", xs @ _*) => MergeStrategy.first
   case x =>
     // For all the other files, use the default sbt-assembly merge strategy
     val oldStrategy = (assemblyMergeStrategy in assembly).value
