@@ -28,8 +28,7 @@ class KeyService @Inject()(ws: WSClient, config: Configuration)(implicit ec: Exe
     val futureKeys = response.map { body =>
       (body.json \ "keys").as[Seq[KeyData]]
     }
-    val result = futureKeys.map(keys => keys.map(k => (k.kid, generateKey(k))).toMap)
-    result
+    futureKeys.map(keys => keys.map(k => (k.kid, generateKey(k))).toMap)
   }
 
   override def apply(): Future[Map[String, PublicKey]] = publicKeys

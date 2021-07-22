@@ -41,8 +41,9 @@ class AuthAction @Inject()(bodyParser: BodyParsers.Default, authService: AuthSer
     }
 
   private def checkAdmin(accessToken: AccessToken): Boolean = {
-    if(accessToken.getRealmAccess() == null) return false
-    accessToken.getRealmAccess().getRoles.contains("ADMIN")
+    if (accessToken.getRealmAccess() == null) false
+    else
+      accessToken.getRealmAccess().getRoles.contains("ADMIN")
   }
 
 }

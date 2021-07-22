@@ -15,7 +15,9 @@ import scala.io.Source
 
 trait WithJwtKeys {
   implicit val clock: Clock = Clock.systemUTC
-  val publicKeyUrl: String = getClass.getClassLoader.getResource("public_key.pub").toString
+
+  val keycloakTestHost = "http://localhost:8080"
+
   val publicKey: PublicKey = {
     val publicKeyUrl: URL = getClass.getClassLoader.getResource("public_key.pub")
     val source = stripPublicKeyText(Source.fromURL(publicKeyUrl).mkString)
@@ -50,7 +52,7 @@ trait WithJwtKeys {
   def getKeycloakToken(ws: WSClient)(implicit ec: ExecutionContext): Future[String] = {
     val params: Seq[(String, String)] = Seq(("username", "admin"), ("password", "admin"), ("grant_type", "password"), ("client_id", "admin-cli"))
     val response: Future[WSResponse] = ws
-      .url("http://localhost:8080/auth/realms/master/protocol/openid-connect/token")
+      .url(s"$keycloakTestHost/auth/realms/master/protocol/openid-connect/token")
       .withHttpHeaders("Content-type" -> "application/x-www-form-urlencoded")
       .post(params.map { case (k, v) => s"$k=$v" }.mkString("&"))
     val futureToken = response.map { body =>

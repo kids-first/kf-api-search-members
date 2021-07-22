@@ -36,8 +36,8 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
   }
 
   override def fakeApplication(): Application = new GuiceApplicationBuilder().configure(Map(
-    "keycloak.certs_url" -> "http://localhost:8080/auth/realms/master/protocol/openid-connect/certs",
-    "keycloak.realm_info_url" -> "http://localhost:8080/auth/realms/master")
+    "keycloak.certs_url" -> s"$keycloakTestHost/auth/realms/master/protocol/openid-connect/certs",
+    "keycloak.realm_info_url" -> s"$keycloakTestHost/auth/realms/master")
   ).build()
 
   "Test / should return 200" in {
