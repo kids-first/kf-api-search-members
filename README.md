@@ -25,4 +25,3 @@ To build the application, run the following from the command line in the root di
 ```bash
 sbt ";clean;assembly"
 ```
-
