@@ -7,6 +7,7 @@
 [![CircleCI](https://circleci.com/gh/kids-first/kf-api-search-members.svg?style=svg)](https://circleci.com/gh/kids-first/kf-api-search-members)
 
 This service requires a REST API query request of the form: 
+
 ```
 /searchmembers?queryString=mytext&start=0&end=50
 ```
