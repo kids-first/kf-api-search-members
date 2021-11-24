@@ -155,7 +155,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
     whenReady(wsClient.url(statusUrl).addHttpHeaders("Authorization" -> s"Bearer $token").get(), Timeout(Span(10, Seconds))) {
       response =>
         response.status mustBe 200
-        response.json mustBe Json.obj(
+        response.json mustEqual Json.obj(
           "count" -> Json.obj(
             "total" -> 2,
             "public" -> 1,
@@ -178,7 +178,7 @@ class AppFeatureSpec extends PlaySpec with GuiceOneServerPerSuite with ScalaFutu
               "country" -> "Canada",
               "lastName" -> "Doe",
               "firstName" -> "John",
-              "highlight" -> Option.empty[String],
+              "highlight" -> Json.obj(),
               "city" -> "Montreal",
               "roles" -> Json.arr("research"),
               "state" -> "Quebec",

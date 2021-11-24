@@ -1,67 +1,70 @@
 package utils
 
-import com.sksamuel.elastic4s.analyzers.{CustomAnalyzerDefinition, EdgeNGramTokenFilter, KeywordTokenizer, LowercaseTokenFilter, StandardTokenizer}
-import com.sksamuel.elastic4s.http.HttpClient
-import com.sksamuel.elastic4s.indexes.IndexDefinition
+import com.sksamuel.elastic4s._
+import com.sksamuel.elastic4s.http.JavaClient
+import com.sksamuel.elastic4s.requests.analysis.{Analysis, CustomAnalyzer, EdgeNGramTokenFilter}
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
+import com.sksamuel.elastic4s.requests.indexes.IndexRequest
+import com.sksamuel.elastic4s.requests.mappings.MappingDefinition
 import com.sksamuel.elastic4s.testkit.DockerTests
-import com.sksamuel.elastic4s.{ElasticsearchClientUri, Index, Indexable, RefreshPolicy}
 import play.api.libs.json.Json
 
 
 trait WithMemberIndex extends DockerTests {
 
   def populateIndex(documents: Seq[MemberDocument]): Unit = {
-    val elasticsearchClientUri = ElasticsearchClientUri("localhost", 9200)
-    val esClient = HttpClient(elasticsearchClientUri)
+    val elasticProperties = ElasticProperties("http://localhost:9200")
 
+    val esClient = ElasticClient(JavaClient(elasticProperties))
 
     esClient.execute {
       deleteIndex(IndexName)
     }.await
-val createQuery = createIndex(IndexName)
-  .mappings(
-    mapping(IndexName)
-      .fields(
-        textField("firstName").analyzer("autocomplete").fields(keywordField("raw")),
-        textField("lastName").analyzer("autocomplete").fields(keywordField("raw")),
-        keywordField("email"),
-        keywordField("hashedEmail"),
-        textField("institutionalEmail"),
-        keywordField("acceptedTerms"),
-        booleanField("isPublic"),
-        booleanField("isActive"),
-        keywordField("roles"),
-        keywordField("title"),
-        textField("jobTitle").analyzer("autocomplete").fields(keywordField("raw")),
-        textField("institution").analyzer("autocomplete").fields(keywordField("raw")),
-        textField("city").analyzer("autocomplete").fields(keywordField("raw")),
-        textField("state").analyzer("autocomplete").fields(keywordField("raw")),
-        textField("country").analyzer("autocomplete").fields(keywordField("raw")),
-        keywordField("eraCommonsID"),
-        textField("bio").analyzer("autocomplete"),
-        textField("story").analyzer("autocomplete"),
-        textField("interests").analyzer("autocomplete").fields(keywordField("raw")),
-        nestedField("virtualStudies").fields(keywordField("id"), textField("name").analyzer("autocomplete").fields(keywordField("raw"))),
-        nestedField("searchableInterests").fields(textField("name").analyzer("autocomplete").fields(keywordField("raw")))
-      )
-  ).analysis(CustomAnalyzerDefinition(
-  "autocomplete",
-  StandardTokenizer,
-  LowercaseTokenFilter,
-  EdgeNGramTokenFilter("edge_ngram", minGram = Some(1), maxGram = Some(20), side = Some("front"))
-))
+    val createQuery = createIndex(IndexName).mapping(MappingDefinition().fields(
+      textField("firstName").analyzer("autocomplete").fields(keywordField("raw")),
+      textField("lastName").analyzer("autocomplete").fields(keywordField("raw")),
+      keywordField("email"),
+      keywordField("hashedEmail"),
+      textField("institutionalEmail"),
+      keywordField("acceptedTerms"),
+      booleanField("isPublic"),
+      booleanField("isActive"),
+      keywordField("roles"),
+      keywordField("title"),
+      textField("jobTitle").analyzer("autocomplete").fields(keywordField("raw")),
+      textField("institution").analyzer("autocomplete").fields(keywordField("raw")),
+      textField("city").analyzer("autocomplete").fields(keywordField("raw")),
+      textField("state").analyzer("autocomplete").fields(keywordField("raw")),
+      textField("country").analyzer("autocomplete").fields(keywordField("raw")),
+      keywordField("eraCommonsID"),
+      textField("bio").analyzer("autocomplete"),
+      textField("story").analyzer("autocomplete"),
+      textField("interests").analyzer("autocomplete").fields(keywordField("raw")),
+      nestedField("virtualStudies").fields(keywordField("id"), textField("name").analyzer("autocomplete").fields(keywordField("raw"))),
+      nestedField("searchableInterests").fields(textField("name").analyzer("autocomplete").fields(keywordField("raw")))
+    )).analysis(Analysis(
+      analyzers = List(CustomAnalyzer(
+        name = "autocomplete",
+        tokenizer = "standard",
+        charFilters = List.empty,
+        tokenFilters = List("lowercase", "customEdgeNgram"))),
+      tokenFilters = List(EdgeNGramTokenFilter(
+        name = "customEdgeNgram",
+        minGram = Some(1),
+        maxGram = Some(20),
+        side = Some("front")))))
     logger.warn(esClient.show(createQuery))
-   val createResult =  esClient.execute(createQuery).await
+    val createResult = esClient.execute(createQuery).await
 
-    createResult.left.map(f => throw new IllegalStateException(s"Error during index creation $f"))
-
-    esClient.execute(
-      bulk(
-        documents.map(member => indexRequest(member._id, member))
-      ).refresh(RefreshPolicy.Immediate)
-    ).await
-
-
+    createResult match {
+      case RequestSuccess(_, _, _, _) =>
+        esClient.execute(
+          bulk(
+            documents.map(member => indexRequest(member._id, member))
+          ).refresh(RefreshPolicy.Immediate)
+        ).await
+      case RequestFailure(_, _, _, error) => throw new IllegalStateException(s"Error during index creation $error")
+    }
   }
 
 
@@ -90,7 +93,7 @@ val createQuery = createIndex(IndexName)
     ).toString()
 
 
-  def indexRequest(id: String, member: MemberDocument): IndexDefinition = indexInto(Index(IndexName), IndexName).source(member).id(id)
+  def indexRequest(id: String, member: MemberDocument): IndexRequest = indexInto(Index(IndexName)).source(member).id(id)
 
   private val IndexName = "member"
 
