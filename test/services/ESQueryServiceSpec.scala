@@ -1,6 +1,6 @@
 package services
 
-import com.sksamuel.elastic4s.http.search.SearchHit
+import com.sksamuel.elastic4s.requests.searches.SearchHit
 import models.QueryFilter
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
@@ -23,38 +23,38 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
       MemberDocument("c1", firstName = "Doe", lastName = "Brian", email = Some("dbrianemail@yahoo.com"), roles = List("community"), interests = List("cancer brain")),
       MemberDocument("c2", firstName = "Paul", lastName = "Brian", email = Some("dbrianemail@yahoo.com")),
       MemberDocument("private_member", "Doe", "Brian", Some("dbrianemail@gmail.com"), isPublic = false),
-      MemberDocument("not_active_member", "Doe", "Secret", Some("dbrianemail@gmail.com"), isActive = false ),
+      MemberDocument("not_active_member", "Doe", "Secret", Some("dbrianemail@gmail.com"), isActive = false),
       MemberDocument("not_accepted_terms", "Doe", "Brian", Some("dbrianemail@yahoo.com"), acceptedTerms = false)
     )
     populateIndex(members)
 
-    configuration = Configuration.apply("elasticsearch.host" -> "localhost", "elasticsearch.port" -> 9200)
+    configuration = Configuration.apply("elasticsearch.host" -> "http://localhost", "elasticsearch.port" -> 9200)
 
     esQueryService = new ESQueryService(configuration)
   }
 
 
   "ESQueryService" should "order documents by score" in {
-    val result = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 10)).await.right.get.result.hits.hits.map(r => r.score).toSeq
+    val result = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 10)).await.result.hits.hits.map(r => r.score).toSeq
     result shouldBe result.sorted(Ordering.Float.reverse)
   }
 
   it should "order documents by lastName for same score" in {
-    val hitResultsByScore: Seq[Seq[SearchHit]] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 10)).await.right.get.result.hits.hits.toSeq.groupBy(_.score).values.toSeq
+    val hitResultsByScore: Seq[Seq[SearchHit]] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 10)).await.result.hits.hits.toSeq.groupBy(_.score).values.toSeq
     val searchHitLastNames: Seq[Seq[String]] = hitResultsByScore.map(_.map(s => s.sourceAsMap.getOrElse("lastName", "").toString))
 
     searchHitLastNames.foreach(l => l shouldBe l.sorted(Ordering.String))
   }
 
   it should "order documents by score, with more weight for lastName" in {
-    val hitResults: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("doe", 0, 10)).await.right.get.result.hits.hits.toSeq
+    val hitResults: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("doe", 0, 10)).await.result.hits.hits.toSeq
     val searchHitIds: Seq[String] = hitResults.map(_.id)
 
     searchHitIds.headOption shouldBe Some("a1")
   }
 
   it should "return only public members" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.result.hits.hits.toSeq
 
     result.foreach {
       r => r.id shouldNot be("private_member")
@@ -62,7 +62,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   it should "return only members with role Community or Patient" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100, roles = Seq("Community", "Patient"))).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100, roles = Seq("Community", "Patient"))).await.result.hits.hits.toSeq
 
     result.foreach {
       r => r.sourceAsMap.get("roles").asInstanceOf[Option[Seq[String]]].getOrElse(Nil) should contain atLeastOneOf("Community", "Patient")
@@ -70,7 +70,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   it should "return only members with acceptedTerms" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.result.hits.hits.toSeq
 
     result.foreach {
       r => r.id shouldNot be("not_accepted_terms")
@@ -78,7 +78,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   it should "return only active members" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Secret", 0, 100)).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Secret", 0, 100)).await.result.hits.hits.toSeq
 
     result.foreach {
       r => r.id shouldNot be("not_active_member")
@@ -86,7 +86,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   it should "return desired fields" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("Brian", 0, 100)).await.result.hits.hits.toSeq
 
     result.foreach {
       r =>
@@ -109,23 +109,23 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   it should "return all results with empty  highlight if queryString is empty" in {
-    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("", 0, 100)).await.right.get.result.hits.hits.toSeq
+    val result: Seq[SearchHit] = esQueryService.generateFilterQueries(QueryFilter("", 0, 100)).await.result.hits.hits.toSeq
     result.size shouldBe 6
     result.foreach {
       r =>
-        r.highlight shouldBe null
+        r.highlight shouldBe Map()
     }
   }
 
   "generateCountQueries" should "return the total numbers of members, the total public and the total private fr a specific filter" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("brian", 0, 100)).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("brian", 0, 100)).await.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "private" -> Map("doc_count" -> 1),
       "public" -> Map("doc_count" -> 5)
     )
   }
   it should "return the total numbers of members, the total public and the total private fr a specific filter, including roles" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("brian", 0, 100, roles = Seq("community", "patient"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateCountQueries(QueryFilter("brian", 0, 100, roles = Seq("community", "patient"))).await.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "private" -> Map("doc_count" -> 0),
       "public" -> Map("doc_count" -> 3)
@@ -134,7 +134,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
 
 
   "generateRolesAggQuery" should "return the aggregate count for roles" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateRolesAggQuery(QueryFilter("brian", 0, 100, Seq("community"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateRolesAggQuery(QueryFilter("brian", 0, 100, Seq("community"))).await.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "community" -> Map("doc_count" -> 2),
       "research" -> Map("doc_count" -> 1),
@@ -144,7 +144,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   "generateInterestsAggQuery" should "return the aggregate count for interests" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsAggQuery(QueryFilter("brian", 0, 100, Nil, Seq("cancer"))).await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsAggQuery(QueryFilter("brian", 0, 100, Nil, Seq("cancer"))).await.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "interests" -> Map(
         "doc_count_error_upper_bound" -> 0,
@@ -158,7 +158,7 @@ class ESQueryServiceSpec extends FlatSpec with WithMemberIndex with Matchers wit
   }
 
   "generateInterestsQuery" should "return the aggregate count for interests" in {
-    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsQuery("cancer br").await.right.get.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+    val result: Map[String, Map[String, Int]] = esQueryService.generateInterestsQuery("cancer br").await.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
     result should contain theSameElementsAs Map(
       "all" -> Map(
         "doc_count" -> 4,

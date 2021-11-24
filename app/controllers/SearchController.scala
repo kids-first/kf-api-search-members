@@ -1,9 +1,8 @@
 package controllers
 
-import com.sksamuel.elastic4s.http.search.SearchResponse
-import com.sksamuel.elastic4s.http.{RequestFailure, RequestSuccess}
+import com.sksamuel.elastic4s.requests.searches.SearchResponse
+import com.sksamuel.elastic4s.{RequestFailure, RequestSuccess, Response}
 import controllers.SearchController._
-import javax.inject._
 import models.QueryFilter
 import play.api.Logging
 import play.api.libs.json.Json.JsValueWrapper
@@ -12,6 +11,7 @@ import play.api.mvc._
 import play.api.routing.sird._
 import services.{AuthAction, ESQueryService}
 
+import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -19,7 +19,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQueryService, authAction: AuthAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
   implicit val bucketlistWrites: Writes[List[(String, Int)]] = (list: List[(String, Int)]) => Json.obj(list.map { case (s, o) =>
-    val ret: (String, JsValueWrapper) = s.toString -> JsNumber(o)
+    val ret: (String, JsValueWrapper) = s -> JsNumber(o)
     ret
   }: _*)
 
@@ -47,12 +47,12 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
     queryFilter.unapply(qs) match {
       case Some(qf) =>
-        val resultsF = esQueryService.generateFilterQueries(qf)
-        val rolesAggsF = esQueryService.generateRolesAggQuery(qf)
-        val interestsAggsF = esQueryService.generateInterestsAggQuery(qf)
-        val countsF = esQueryService.generateCountQueries(qf)
+        val resultsF: Future[Response[SearchResponse]] = esQueryService.generateFilterQueries(qf)
+        val rolesAggsF: Future[Response[SearchResponse]] = esQueryService.generateRolesAggQuery(qf)
+        val interestsAggsF: Future[Response[SearchResponse]] = esQueryService.generateInterestsAggQuery(qf)
+        val countsF: Future[Response[SearchResponse]] = esQueryService.generateCountQueries(qf)
 
-        val all: Future[Either[RequestFailure, (RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse], RequestSuccess[SearchResponse])]] = for {
+        val all: Future[Response[(SearchResponse, SearchResponse, SearchResponse, SearchResponse)]] = for {
           results <- resultsF
           counts <- countsF
           rolesAggs <- rolesAggsF
@@ -67,14 +67,14 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
         }
 
         all map {
-          case Right((resultSuccess, countSuccess, rolesAggsSuccess, interestsAggsSuccess)) =>
+          case RequestSuccess(_, _, _, (resultSuccess, countSuccess, rolesAggsSuccess, interestsAggsSuccess)) =>
             logger.info(s"ElasticSearch: RequestSuccess with query parameters: q=${qf.queryString} roles=${} from ${qf.start} and size ${qf.end}")
-            val countAggs = countSuccess.result.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
-            val rolesAggs = rolesAggsSuccess.result.aggregationsAsMap
+            val countAggs = countSuccess.aggregationsAsMap.asInstanceOf[Map[String, Map[String, Int]]]
+            val rolesAggs = rolesAggsSuccess.aggregationsAsMap
 
-            val (interests, interestsOthers) = getBuckets("interests", interestsAggsSuccess.result.aggregationsAsMap)
+            val (interests, interestsOthers) = getBuckets("interests", interestsAggsSuccess.aggregationsAsMap)
 
-            val publicMembers: Seq[JsObject] = resultSuccess.result.hits.hits.map(sh =>
+            val publicMembers: Seq[JsObject] = resultSuccess.hits.hits.map(sh =>
               Json.parse(sh.sourceAsString).as[JsObject] ++
                 Json.obj("_id" -> sh.id) ++
                 Json.obj("highlight" -> Option(sh.highlight))
@@ -82,7 +82,7 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
             val result = Json.obj(
               "count" -> Json.obj(
-                "total" -> countSuccess.result.totalHits,
+                "total" -> countSuccess.totalHits,
                 "public" -> fromCount("public", countAggs),
                 "private" -> fromCount("private", countAggs),
                 "interests" -> Json.toJson(interests),
@@ -97,9 +97,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
               "publicMembers" -> Json.toJson(publicMembers),
             )
             Ok(result)
-          case Left(failure) =>
-            logger.error(s"ElasticSearch: RequestFailure was returned $failure")
-            InternalServerError(s"ElasticSearch request failed $failure")
+          case RequestFailure(_, _, _, error) =>
+            logger.error(s"ElasticSearch: RequestFailure was returned $error")
+            InternalServerError(s"ElasticSearch request failed $error")
         }
       case None => Future.successful(BadRequest("Invalid input query string"))
     }
@@ -108,11 +108,10 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
   def interests(): Action[AnyContent] = authAction.async { implicit request: Request[AnyContent] => //FIXME  CHANGE THIS BACK
     request.queryString match {
       case q"queryString=$queryString" =>
-        esQueryService.generateInterestsQuery(queryString) map {
-          case Right(respSucces) =>
-
+        esQueryService.generateInterestsQuery(queryString).map {
+          case RequestSuccess(_, _, _, result) =>
             //Drill down to "buckets"
-            val buckets = respSucces.result.aggregationsAsMap
+            val buckets = result.aggregationsAsMap
               .get("all").asInstanceOf[Option[Agg]]
               .flatMap(a =>
                 a.get("filtered").asInstanceOf[Option[Agg]])
@@ -128,11 +127,10 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
             Ok(Json.obj("interests" -> interests))
 
-          case Left(failure) =>
-            logger.error(s"ElasticSearch: RequestFailure was returned $failure")
-            InternalServerError(s"ElasticSearch request failed $failure")
+          case RequestFailure(_, _, _, error) =>
+            logger.error(s"ElasticSearch: RequestFailure was returned $error")
+            InternalServerError(s"ElasticSearch request failed $error")
         }
-
       case _ => Future.successful(BadRequest("Invalid input query string"))
     }
   }
@@ -141,10 +139,10 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
     request.queryString match {
       case q_o"size=${int(size)}" =>
         esQueryService.generateInterestsStatsQuery(size) map {
-          case Right(respSucces) =>
+          case RequestSuccess(_, _, _, result) =>
 
             //Drill down to "buckets"
-            val all = respSucces.result.aggregationsAsMap
+            val all = result.aggregationsAsMap
               .get("all").asInstanceOf[Option[Agg]]
 
             val searchableInterst = all
@@ -168,9 +166,9 @@ class SearchController @Inject()(cc: ControllerComponents, esQueryService: ESQue
 
             Ok(Json.obj("interests" -> results))
 
-          case Left(failure) =>
-            logger.error(s"ElasticSearch: RequestFailure was returned $failure")
-            InternalServerError(s"ElasticSearch request failed $failure")
+          case RequestFailure(_, _, _, error) =>
+            logger.error(s"ElasticSearch: RequestFailure was returned $error")
+            InternalServerError(s"ElasticSearch request failed $error")
         }
 
       case _ => Future.successful(BadRequest("Invalid input query string"))

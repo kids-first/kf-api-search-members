@@ -1,18 +1,17 @@
 package services
 
-import com.sksamuel.elastic4s.ElasticsearchClientUri
-import com.sksamuel.elastic4s.analyzers.StandardAnalyzer
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.http.search.SearchResponse
-import com.sksamuel.elastic4s.http.{HttpClient, RequestFailure, RequestSuccess}
-import com.sksamuel.elastic4s.searches.aggs.TermsAggregationDefinition
-import com.sksamuel.elastic4s.searches.queries.matches.{MatchQueryDefinition, ZeroTermsQuery}
-import com.sksamuel.elastic4s.searches.queries.{BoolQueryDefinition, QueryDefinition}
-import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, SortOrder}
+import com.sksamuel.elastic4s.{ElasticClient, ElasticProperties, Response}
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.http.JavaClient
+import com.sksamuel.elastic4s.requests.searches.SearchResponse
+import com.sksamuel.elastic4s.requests.searches.aggs.TermsAggregation
+import com.sksamuel.elastic4s.requests.searches.queries.{BoolQuery, Query}
+import com.sksamuel.elastic4s.requests.searches.queries.matches.{MatchQuery, ZeroTermsQuery}
+import com.sksamuel.elastic4s.requests.searches.sort.{FieldSort, SortOrder}
 import com.sksamuel.exts.Logging
+
 import javax.inject.{Inject, Singleton}
 import models.QueryFilter
-import org.elasticsearch.client.RestClient
 import play.api.Configuration
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,11 +22,9 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   private val MAX_INTERESTS_STATS = 100
   private val host = configuration.get[String]("elasticsearch.host")
   private val port = configuration.get[Int]("elasticsearch.port")
-  private val ssl = host.startsWith("https://").toString
-  private val hostname = host.replace("http://", "").replace("https://", "")
-  private val elasticsearchClientUri = new ElasticsearchClientUri(s"$hostname:$port", List((hostname, port)), Map("ssl" -> ssl))
+  private val elasticProperties = ElasticProperties(s"$host:$port")
 
-  private val client = HttpClient(elasticsearchClientUri)
+  private val client = ElasticClient(JavaClient(elasticProperties))
 
   private val qfSelect = (qf: QueryFilter) => if (qf.qAllMembers) {
     queryFilter(qf, matchQuery("acceptedTerms", true))
@@ -40,7 +37,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
   }
 
 
-  def generateCountQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateCountQueries(qf: QueryFilter): Future[Response[SearchResponse]] = {
     val q = search("member")
       .size(0)
       .bool {
@@ -57,7 +54,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateRolesAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateRolesAggQuery(qf: QueryFilter): Future[Response[SearchResponse]] = {
     val q = search("member")
       .size(0)
       .bool {
@@ -74,26 +71,26 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateInterestsAggQuery(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateInterestsAggQuery(qf: QueryFilter): Future[Response[SearchResponse]] = {
     val q = search("member")
       .size(0)
       .bool {
         qfSelect(qf.copy(interests = Nil))
       }
       .aggregations(
-        TermsAggregationDefinition("interests", size = Some(1000)).field("interests.raw")
+        TermsAggregation("interests", size = Some(1000)).field("interests.raw")
       )
     logger.debug(s"ES Query = ${client.show(q)}")
     client.execute(q)
 
   }
 
-  def generateFilterQueries(qf: QueryFilter): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateFilterQueries(qf: QueryFilter): Future[Response[SearchResponse]] = {
 
     val q = search("member")
       .from(qf.start)
       .size(Math.abs(qf.end - qf.start)) //FIXME cannot be more that index.max_result_window
-      .sortBy(FieldSortDefinition("_score", order = SortOrder.Desc), FieldSortDefinition("lastName.raw"))
+      .sortBy(FieldSort("_score", order = SortOrder.Desc), FieldSort("lastName.raw"))
       .sourceInclude("firstName", "lastName", "hashedEmail", "roles", "title", "institution", "city", "state", "country", "interests", "isPublic", "isActive")
       .bool {
         qfSelect(qf)
@@ -117,7 +114,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     resp
   }
 
-  def generateInterestsQuery(qs: String): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateInterestsQuery(qs: String): Future[Response[SearchResponse]] = {
     val q = search("member")
       .size(0)
       .aggregations(
@@ -126,11 +123,11 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
             filterAgg("filtered", boolQuery().should(
               matchQuery("searchableInterests.name", qs)
                 .zeroTermsQuery("all")
-                .analyzer(StandardAnalyzer)
+                .analyzer("standard")
                 .operator("and")
             ))
               .subAggregations(
-                TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = Some(10))
+                TermsAggregation(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = Some(10))
               )
           )
       )
@@ -141,13 +138,13 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
 
   }
 
-  def generateInterestsStatsQuery(size: Option[Int]): Future[Either[RequestFailure, RequestSuccess[SearchResponse]]] = {
+  def generateInterestsStatsQuery(size: Option[Int]): Future[Response[SearchResponse]] = {
     val q = search("member")
       .size(0)
       .aggregations(
         nestedAggregation("all", "searchableInterests")
           .subAggregations(
-            TermsAggregationDefinition(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = size.orElse(Some(MAX_INTERESTS_STATS)))
+            TermsAggregation(name = "searchableInterests", field = Some("searchableInterests.name.raw"), size = size.orElse(Some(MAX_INTERESTS_STATS)))
           )
       )
 
@@ -161,7 +158,7 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     Seq(
       multiMatchQuery(qf.queryString)
         .zeroTermsQuery(ZeroTermsQuery.ALL)
-        .analyzer(StandardAnalyzer)
+        .analyzer("standard")
         .fields("firstName",
           "lastName^5",
           "interests",
@@ -174,13 +171,13 @@ class ESQueryService @Inject()(configuration: Configuration) extends Logging {
     )
   }
 
-  private def queryFilter(qf: QueryFilter, filters: MatchQueryDefinition* ) = {
+  private def queryFilter(qf: QueryFilter, filters: MatchQuery* ) = {
 
     val appendedFiltersRoles = if (qf.roles.nonEmpty) filters :+ should(qf.roles.map(r => matchQuery("roles", r))).minimumShouldMatch(1) else filters
     val appendedFiltersInterests = if (qf.interests.nonEmpty) appendedFiltersRoles :+ should(qf.interests.map(i => matchQuery("interests.raw", i))).minimumShouldMatch(1) else appendedFiltersRoles
 
-    val queriesShould: Seq[QueryDefinition] = matchQueryString(qf)
-    BoolQueryDefinition()
+    val queriesShould: Seq[Query] = matchQueryString(qf)
+    BoolQuery()
       .filter(appendedFiltersInterests)
       .should(queriesShould)
       .minimumShouldMatch(1)

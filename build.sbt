@@ -8,7 +8,7 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.12.10"
 
 val keycloakVersion = "4.0.0.Final"
-val elastic4sVersion = "6.1.4"
+val elastic4sVersion = "7.3.1"
 
 libraryDependencies += guice
 libraryDependencies += ws
@@ -23,7 +23,7 @@ libraryDependencies ++= Seq(
     exclude("commons-logging", "commons-logging")
     exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
 
-  "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion
+  "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % elastic4sVersion
     exclude("commons-logging", "commons-logging")
     exclude("org.apache.logging.log4j", "log4j-slf4j-impl"),
 
