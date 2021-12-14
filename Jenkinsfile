@@ -1,7 +1,7 @@
 @Library(value="kids-first/aws-infra-jenkins-shared-libraries", changelog=false) _
 ecs_service_type_1_standard {
     projectName = "kf-api-search-members"
-    environments = "dev,qa,prd"
+    environments = "qa,prd"
     docker_image_type = "debian"
     entrypoint_command = "java -Dhttp.port=80 -jar /app/kf-search-members.jar"
     quick_deploy = "true"
